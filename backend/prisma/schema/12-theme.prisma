@@ -1,0 +1,87 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Theme and white-label branding
+// Blueprint 07: "Theme system — tokens, not hard-coded values." Every visual
+// value the product renders resolves from a token set, so a school can be
+// re-skinned without a code change.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Theme {
+  id       String  @id @default(cuid())
+  /// Null for platform-provided base themes available to every tenant.
+  schoolId String?
+  school   School? @relation("SchoolThemes", fields: [schoolId], references: [id], onDelete: Cascade)
+
+  name        String      @db.VarChar(120)
+  /// Stable key used in CSS variable output and exports.
+  key         String      @db.VarChar(80)
+  description String?     @db.VarChar(500)
+  status      ThemeStatus @default(DRAFT)
+  /// Platform base themes are read-only for tenants.
+  isSystem    Boolean     @default(false)
+  /// Optional age band this theme is tuned for. Blueprint 07 age evolution.
+  ageMode     AgeMode?
+
+  // ── First-class tokens (mirrored into `tokens` for the client) ─────────────
+  colorPrimary    String @default("#4F46E5") @db.VarChar(9)
+  colorSecondary  String @default("#0EA5E9") @db.VarChar(9)
+  colorAccent     String @default("#F59E0B") @db.VarChar(9)
+  colorSuccess    String @default("#16A34A") @db.VarChar(9)
+  colorWarning    String @default("#D97706") @db.VarChar(9)
+  colorDanger     String @default("#DC2626") @db.VarChar(9)
+  colorSurface    String @default("#FFFFFF") @db.VarChar(9)
+  colorBackground String @default("#F6F7FB") @db.VarChar(9)
+  colorTextBody   String @default("#111827") @db.VarChar(9)
+  colorTextMuted  String @default("#6B7280") @db.VarChar(9)
+
+  fontHeading  String @default("Inter") @db.VarChar(120)
+  fontBody     String @default("Inter") @db.VarChar(120)
+  /// Base body size in px; the age mode scales from here.
+  fontBaseSize Int    @default(16)
+  radiusScale  String @default("md") @db.VarChar(12)
+  densityScale String @default("comfortable") @db.VarChar(16)
+
+  /// Blueprint 07 accessibility: honour reduced motion and high contrast.
+  reduceMotion Boolean @default(false)
+  highContrast Boolean @default(false)
+
+  /// Full token tree: colors, typography, spacing, radii, shadows, motion.
+  tokens Json?
+
+  logoMediaId    String?
+  logoMedia      MediaAsset? @relation("ThemeLogo", fields: [logoMediaId], references: [id], onDelete: SetNull)
+  faviconMediaId String?
+  faviconMedia   MediaAsset? @relation("ThemeFavicon", fields: [faviconMediaId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+  archivedAt  DateTime?
+  createdById String?   @db.VarChar(32)
+
+  versions        ThemeVersion[]
+  activeForSchool School?        @relation("SchoolActiveTheme")
+
+  @@unique([schoolId, key])
+  @@index([status])
+  @@map("themes")
+}
+
+/// Blueprint 07/17: theme changes are versioned so a school can roll back and so
+/// the versioning log can evidence what learners actually saw.
+model ThemeVersion {
+  id      String @id @default(cuid())
+  themeId String
+  theme   Theme  @relation(fields: [themeId], references: [id], onDelete: Cascade)
+
+  version       Int
+  status        ThemeStatus @default(DRAFT)
+  tokens        Json
+  changeSummary String?     @db.VarChar(500)
+
+  createdAt   DateTime  @default(now())
+  publishedAt DateTime?
+  createdById String?   @db.VarChar(32)
+
+  @@unique([themeId, version])
+  @@map("theme_versions")
+}

@@ -1,0 +1,156 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Identity — users, profiles, role assignments, sessions, invitations, groups
+// Blueprint 05: role definitions and access boundaries.
+// Blueprint 06: "Access is denied unless explicitly allowed by role and active
+// tenant context." Permissions themselves live in code
+// (src/core/rbac/permissions.ts) and are mapped from `RoleKey`; per-tenant
+// visibility overrides are expressed as `FeatureEntitlement` rows so that a
+// permission grant and a feature toggle never disagree.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id             String        @id @default(cuid())
+  /// Null for platform staff who sit above every tenant.
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schoolId       String?
+  school         School?       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  status      UserStatus @default(INVITED)
+  /// Convenience copy of the dominant role. Authorization always reads
+  /// `UserRoleAssignment`, never this column.
+  primaryRole RoleKey
+
+  // ── Credentials and identifiers (blueprint 05 login methods) ──────────────
+  email       String? @unique @db.VarChar(190)
+  username    String? @db.VarChar(80)
+  /// Blueprint 03: young learners sign in with a school-issued code.
+  studentCode String? @db.VarChar(32)
+
+  firstName   String  @db.VarChar(80)
+  lastName    String  @db.VarChar(80)
+  displayName String  @db.VarChar(160)
+  /// Blueprint 03: leaderboards may show a nickname instead of a real name.
+  nickname    String? @db.VarChar(60)
+
+  dateOfBirth DateTime?
+  /// Overrides the school default. Blueprint 07 age-based evolution.
+  ageMode     AgeMode?
+  locale      String?   @db.VarChar(16)
+  timezone    String?   @db.VarChar(64)
+
+  avatarMediaId String?
+  avatarMedia   MediaAsset? @relation("UserAvatar", fields: [avatarMediaId], references: [id], onDelete: SetNull)
+
+  passwordHash       String?      @db.VarChar(255)
+  /// Separate short PIN for student-code + PIN login.
+  pinHash            String?      @db.VarChar(255)
+  mustChangePassword Boolean      @default(false)
+  failedLoginCount   Int          @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  lastLoginMethod    LoginMethod?
+  emailVerifiedAt    DateTime?
+  termsAcceptedAt    DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  suspendedAt DateTime?
+  archivedAt  DateTime?
+  createdById String?   @db.VarChar(32)
+
+  // ── Profiles and access ───────────────────────────────────────────────────
+  studentProfile   StudentProfile?
+  roleAssignments  UserRoleAssignment[]
+  sessions         Session[]
+  groupMemberships UserGroupMember[]
+  classMemberships ClassMembership[]
+  classTeachers    ClassTeacher[]
+
+  // ── Learning ──────────────────────────────────────────────────────────────
+  learningPaths           LearningPath[]
+  progressRecords         ProgressRecord[]
+  masteryRecords          MasteryRecord[]
+  assessmentAttempts      AssessmentAttempt[]
+  topicEvaluations        TopicEvaluation[]
+  recommendations         Recommendation[]    @relation("RecommendationStudent")
+  recommendationDecisions Recommendation[]    @relation("RecommendationDecidedBy")
+
+  // ── Assignments and engagement ────────────────────────────────────────────
+  assignmentsCreated Assignment[]        @relation("AssignmentCreatedBy")
+  assignmentAttempts AssignmentAttempt[]
+  missionProgress    MissionProgress[]
+  pointsLedger       PointsLedger[]
+  studentBadges      StudentBadge[]
+  streaks            Streak[]
+  companion          Companion?
+  studentRewards     StudentReward[]
+  leaderboardEntries LeaderboardEntry[]
+
+  // ── Teacher records ───────────────────────────────────────────────────────
+  notesAuthored              TeacherNote[]       @relation("TeacherNoteAuthor")
+  notesAboutMe               TeacherNote[]       @relation("TeacherNoteStudent")
+  teacherAssessmentsAuthored TeacherAssessment[] @relation("TeacherAssessmentAuthor")
+  teacherAssessmentsAboutMe  TeacherAssessment[] @relation("TeacherAssessmentStudent")
+
+  // ── Communication and operations ──────────────────────────────────────────
+  notifications           Notification[]
+  notificationPreference  NotificationPreference?
+  reportExports           ReportExport[]
+  supportRequestsRaised   SupportRequest[]        @relation("SupportRequester")
+  supportRequestsAssigned SupportRequest[]        @relation("SupportAssignee")
+  supportMessages         SupportMessage[]
+  auditLogs               AuditLog[]
+  dataRequestsAboutMe     DataRequest[]           @relation("DataRequestSubject")
+  dataRequestsRaised      DataRequest[]           @relation("DataRequestRequester")
+  invitationsSent         Invitation[]            @relation("InvitationInvitedBy")
+  invitationAccepted      Invitation?             @relation("InvitationAcceptedBy")
+
+  // ── Content ───────────────────────────────────────────────────────────────
+  mediaUploaded     MediaAsset[]              @relation("MediaUploader")
+  contentReports    ContentReport[]           @relation("ContentReportReporter")
+  moderationReviews ContentModerationReview[] @relation("ModerationReviewer")
+
+  @@unique([schoolId, studentCode])
+  @@unique([schoolId, username])
+  @@index([schoolId, status])
+  @@index([organizationId])
+  @@index([primaryRole])
+  @@map("users")
+}
+
+/// Student-specific state — the final layer of the blueprint 06 configuration
+/// precedence chain, and the home for blueprint 07 accessibility preferences.
+model StudentProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  currentGradeId String?
+  currentGrade   Grade?  @relation(fields: [currentGradeId], references: [id], onDelete: SetNull)
+
+  /// Blueprint 03 onboarding: screening → placement → path.
+  onboardingCompletedAt DateTime?
+  screeningCompletedAt  DateTime?
+  placementSummary      String?   @db.VarChar(500)
+
+  // ── Accessibility (blueprint 07) ──────────────────────────────────────────
+  fontScale         Int     @default(100)
+  dyslexiaFont      Boolean @default(false)
+  reduceMotion      Boolean @default(false)
+  highContrast      Boolean @default(false)
+  audioSupport      Boolean @default(false)
+  captionsPreferred Boolean @default(false)
+
+  /// Free-text support note visible to authorized staff only.
+  supportNotes         String? @db.Text
+  targetMinutesPerWeek Int     @default(60)
+  /// Future parent link (blueprint 03/04 planned parent role).
+  guardianEmail        String? @db.VarChar(190)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([currentGradeId])
+  @@map("student_profiles")
+}

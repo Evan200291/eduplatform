@@ -1,0 +1,65 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Content — media assets
+// Blueprint 05: every asset carries an ownership label and a moderation state.
+// Blueprint 07 accessibility: images require alt text and time-based media
+// requires a transcript or captions; both are enforced in the API validation
+// layer (src/modules/content/media.validation.ts), not just documented here.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MediaAsset {
+  id       String  @id @default(cuid())
+  /// Null for platform-owned library assets shared across tenants.
+  schoolId String?
+  school   School? @relation("SchoolMediaAssets", fields: [schoolId], references: [id], onDelete: Cascade)
+
+  kind             MediaKind
+  fileName         String    @db.VarChar(255)
+  originalFileName String?   @db.VarChar(255)
+  /// Path or object key inside the configured storage driver. Never a raw URL.
+  storageKey       String    @unique @db.VarChar(500)
+  mimeType         String    @db.VarChar(140)
+  byteSize         Int
+  checksumSha256   String?   @db.VarChar(64)
+
+  width           Int?
+  height          Int?
+  durationSeconds Int?
+
+  altText    String? @db.VarChar(500)
+  caption    String? @db.VarChar(500)
+  transcript String? @db.Text
+
+  ownership   ContentOwnership @default(MIDAS_ORIGINAL)
+  licenseNote String?          @db.VarChar(500)
+  attribution String?          @db.VarChar(300)
+
+  moderationDecision ModerationDecision @default(PENDING)
+  moderatedAt        DateTime?
+  moderatedById      String?            @db.VarChar(32)
+  /// Public assets (logos, favicons) may be served without an auth check.
+  isPublic           Boolean            @default(false)
+
+  uploadedById String?
+  uploadedBy   User?   @relation("MediaUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // ── Reverse links ─────────────────────────────────────────────────────────
+  schoolLogos        School[]        @relation("SchoolLogo")
+  userAvatars        User[]          @relation("UserAvatar")
+  themeLogos         Theme[]         @relation("ThemeLogo")
+  themeFavicons      Theme[]         @relation("ThemeFavicon")
+  lessonHeroes       Lesson[]        @relation("LessonHeroMedia")
+  lessonSections     LessonSection[] @relation("LessonSectionMedia")
+  activityThumbnails Activity[]      @relation("ActivityThumbnail")
+  questionPrompts    Question[]      @relation("QuestionPromptMedia")
+  answerOptions      AnswerOption[]  @relation("AnswerOptionMedia")
+  badgeIcons         Badge[]         @relation("BadgeIcon")
+  rewardPreviews     Reward[]        @relation("RewardPreview")
+
+  @@index([schoolId, kind])
+  @@index([moderationDecision])
+  @@map("media_assets")
+}

@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pm2-*.log
+
+# Prisma
+backend/prisma/dev.db
+backend/prisma/*.db-journal
+
+# Uploads / generated media
+backend/storage/uploads/*
+!backend/storage/uploads/.gitkeep
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Scratch
+_pdf_clean.txt
+_pdf_text.txt
+
+# Working credentials — kept local, never published.
+# These list the seed accounts' real passwords and the student PIN. Once the
+# seed runs on a live server those become working logins to a system holding
+# children's data, so they must not sit in a repo.
+TEST-ACCESS.md
+scratchpad/

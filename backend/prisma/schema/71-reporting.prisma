@@ -1,0 +1,80 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Reporting and exports
+// Blueprint 04: "Every report must state what the measure is, where it came
+// from, and what it does not prove." `ReportDefinition.measureNotes` and
+// `limitationNotes` are required for that reason, and exports carry the same
+// labelling into the file.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ReportDefinition {
+  id       String  @id @default(cuid())
+  /// Null for platform-provided standard reports available to every school.
+  schoolId String?
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  name        String  @db.VarChar(180)
+  key         String  @db.VarChar(80)
+  description String? @db.VarChar(600)
+  /// STUDENT | CLASS | GRADE | SUBJECT | SCHOOL | ORGANIZATION | PLATFORM.
+  scopeLevel  String  @db.VarChar(30)
+  /// Which audience this report is written for, as a `RoleKey` list.
+  audience    Json
+
+  /// Blueprint 04 honesty requirements.
+  measureNotes    String @db.VarChar(1000)
+  limitationNotes String @db.VarChar(1000)
+  /// Which evidence sources this report draws on.
+  evidenceSources Json
+
+  /// Saved filter/column configuration.
+  configuration Json?
+  isSystem      Boolean @default(false)
+  isActive      Boolean @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime?
+  createdById String?   @db.VarChar(32)
+
+  exports ReportExport[]
+
+  @@unique([schoolId, key])
+  @@index([scopeLevel])
+  @@map("report_definitions")
+}
+
+model ReportExport {
+  id       String  @id @default(cuid())
+  schoolId String?
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  definitionId String?
+  definition   ReportDefinition? @relation(fields: [definitionId], references: [id], onDelete: SetNull)
+
+  requestedById String
+  requestedBy   User   @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+
+  format     ReportFormat       @default(CSV)
+  status     ReportExportStatus @default(QUEUED)
+  /// Filters actually applied, kept so a stale file can be explained.
+  parameters Json?
+
+  rowCount      Int?
+  fileName      String? @db.VarChar(255)
+  /// Storage key, not a URL. Downloads are always authorized per request.
+  storageKey    String? @db.VarChar(500)
+  byteSize      Int?
+  failureReason String? @db.VarChar(600)
+
+  requestedAt      DateTime  @default(now())
+  startedAt        DateTime?
+  completedAt      DateTime?
+  /// Blueprint 10: exports containing learner data expire rather than linger.
+  expiresAt        DateTime?
+  downloadCount    Int       @default(0)
+  lastDownloadedAt DateTime?
+
+  @@index([schoolId, status])
+  @@index([requestedById, requestedAt])
+  @@map("report_exports")
+}

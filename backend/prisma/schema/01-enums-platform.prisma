@@ -1,0 +1,136 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums — platform, tenancy, identity and configuration
+// Blueprint refs: 02 (Product Ecosystem), 05 (Admin Panel), 06 (Feature Modularity)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Lifecycle of a tenant (organization or school). Blueprint 05: a tenant is
+/// suspended or archived, never immediately hard-deleted.
+enum TenantStatus {
+  PROSPECT
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+  ARCHIVED
+}
+
+/// Canonical role keys. Blueprint 05 defines the first four plus Student and the
+/// future Parent role; the remainder are the "future specialist roles".
+enum RoleKey {
+  PLATFORM_OWNER
+  PLATFORM_OPS_ADMIN
+  SCHOOL_ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+  CURRICULUM_MANAGER
+  CONTENT_REVIEWER
+  BILLING_ADMIN
+  SUPPORT_AGENT
+  REPORT_VIEWER
+}
+
+/// The scope a role assignment is evaluated in. Blueprint 06: "Access is denied
+/// unless explicitly allowed by role and active tenant context."
+enum RoleScopeType {
+  PLATFORM
+  ORGANIZATION
+  SCHOOL
+  GRADE
+  CLASS
+  SUBJECT
+}
+
+enum LoginMethod {
+  EMAIL_PASSWORD
+  USERNAME_PASSWORD
+  STUDENT_CODE
+  STUDENT_CODE_PIN
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum SubscriptionPlan {
+  PILOT
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingInterval {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  CUSTOM
+}
+
+/// Blueprint 05: every significant non-core feature must be configurable by one
+/// or more of these scopes.
+enum EntitlementScopeType {
+  PLATFORM
+  PLAN
+  ORGANIZATION
+  SCHOOL
+  ROLE
+  GRADE
+  CLASS
+  SUBJECT
+  USER_GROUP
+}
+
+enum ThemeStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+/// Blueprint 07: "The product should grow with the learner." Age mode drives
+/// typography, density, gamification intensity and feedback tone.
+enum AgeMode {
+  EARLY_YEARS
+  PRIMARY
+  LOWER_SECONDARY
+  UPPER_SECONDARY
+  ADULT
+}
+
+enum AuditResult {
+  SUCCESS
+  FAILURE
+  DENIED
+}
+
+enum DataRequestKind {
+  EXPORT
+  DELETION
+  CORRECTION
+}
+
+enum DataRequestStatus {
+  REQUESTED
+  IN_REVIEW
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  CANCELLED
+}

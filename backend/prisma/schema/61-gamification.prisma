@@ -1,0 +1,182 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Gamification — points ledger, badges, streaks, rewards
+// Blueprint 12 "Points ledger principle": each change records a reason, source
+// event, value, timestamp and reversal where necessary. There is no mutable
+// "total points" column anywhere — a balance is always a sum over this ledger.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PointsLedger {
+  id        String @id @default(cuid())
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  reason PointsReason
+  /// Signed. Negative entries are corrections or reversals, never punishments.
+  points Int
+
+  /// What produced this entry, e.g. ACTIVITY | ASSIGNMENT | MISSION | BADGE.
+  sourceType String? @db.VarChar(40)
+  sourceId   String? @db.VarChar(32)
+  note       String? @db.VarChar(400)
+
+  /// Set on the original entry when it has been reversed.
+  reversedAt      DateTime?
+  reversedById    String?   @db.VarChar(32)
+  /// Set on the reversal entry, pointing back at what it cancels.
+  reversesEntryId String?   @db.VarChar(32)
+  awardedById     String?   @db.VarChar(32)
+
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([studentId, occurredAt])
+  @@index([schoolId, occurredAt])
+  @@index([sourceType, sourceId])
+  @@map("points_ledger")
+}
+
+model Badge {
+  id       String @id @default(cuid())
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  name             String    @db.VarChar(140)
+  key              String    @db.VarChar(80)
+  description      String    @db.VarChar(500)
+  tier             BadgeTier @default(BRONZE)
+  pointsValue      Int       @default(0)
+  sortOrder        Int       @default(0)
+  isActive         Boolean   @default(true)
+  /// Blueprint 03: effort and improvement are recognised, not only attainment.
+  recognisesEffort Boolean   @default(false)
+
+  /// Machine-checkable rule, e.g. { "type": "streak", "kind": "DAILY_LEARNING", "days": 5 }.
+  criteria      Json
+  /// Human-readable version of `criteria`, shown to students and teachers.
+  criteriaLabel String @db.VarChar(300)
+
+  iconMediaId String?
+  iconMedia   MediaAsset? @relation("BadgeIcon", fields: [iconMediaId], references: [id], onDelete: SetNull)
+  /// Fallback icon name when no media asset is uploaded.
+  iconKey     String?     @db.VarChar(60)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime?
+  createdById String?   @db.VarChar(32)
+
+  awards   StudentBadge[]
+  missions Mission[]      @relation("MissionRewardBadge")
+
+  @@unique([schoolId, key])
+  @@index([schoolId, isActive])
+  @@map("badges")
+}
+
+model StudentBadge {
+  id        String @id @default(cuid())
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  badgeId   String
+  badge     Badge  @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  awardedAt   DateTime  @default(now())
+  /// Null when awarded automatically by the rules engine.
+  awardedById String?   @db.VarChar(32)
+  reason      String?   @db.VarChar(400)
+  /// Set if the award was later withdrawn (e.g. reversed evidence).
+  revokedAt   DateTime?
+  revokedById String?   @db.VarChar(32)
+  seenAt      DateTime?
+
+  @@unique([studentId, badgeId])
+  @@index([schoolId, awardedAt])
+  @@map("student_badges")
+}
+
+/// Blueprint 03: streaks encourage habit without punishing absence — a broken
+/// streak keeps its personal best and starts again.
+model Streak {
+  id        String @id @default(cuid())
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  kind             StreakKind
+  currentLength    Int        @default(0)
+  longestLength    Int        @default(0)
+  /// Local date of the last qualifying activity, used to decide continuity.
+  lastQualifiedOn  DateTime?
+  startedOn        DateTime?
+  /// Blueprint 06 "streak at risk" notification support.
+  atRiskNotifiedAt DateTime?
+  /// Optional grace allowance so one missed day does not erase weeks of work.
+  freezesRemaining Int        @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, kind])
+  @@index([schoolId, kind])
+  @@map("streaks")
+}
+
+/// Blueprint 03: rewards are cosmetic or recognition-based. Nothing purchasable
+/// with real money, and nothing that gates learning content.
+model Reward {
+  id       String @id @default(cuid())
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  name        String     @db.VarChar(140)
+  key         String     @db.VarChar(80)
+  description String?    @db.VarChar(500)
+  kind        RewardKind
+  /// Points required to unlock. 0 means "granted by rule, not purchased".
+  pointsCost  Int        @default(0)
+  /// Structured payload, e.g. { "slot": "hat", "assetKey": "wizard-hat" }.
+  payload     Json?
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  /// Restrict to an age band where a cosmetic would not suit older learners.
+  ageMode     AgeMode?
+
+  previewMediaId String?
+  previewMedia   MediaAsset? @relation("RewardPreview", fields: [previewMediaId], references: [id], onDelete: SetNull)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  grants StudentReward[]
+
+  @@unique([schoolId, key])
+  @@index([schoolId, isActive])
+  @@map("rewards")
+}
+
+model StudentReward {
+  id        String @id @default(cuid())
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  rewardId  String
+  reward    Reward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+
+  unlockedAt  DateTime  @default(now())
+  /// Cosmetics can be owned but not worn.
+  isEquipped  Boolean   @default(false)
+  equippedAt  DateTime?
+  pointsSpent Int       @default(0)
+  grantedById String?   @db.VarChar(32)
+
+  @@unique([studentId, rewardId])
+  @@index([schoolId, unlockedAt])
+  @@map("student_rewards")
+}

@@ -1,0 +1,141 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Platform operations
+// Blueprint 06: the feature registry — nothing can be toggled that is not first
+// declared here, so the admin panel never shows a switch that does nothing.
+// Blueprint 13: operational records. Blueprint 17: the versioning log.
+// These tables are platform-scoped and deliberately relation-free.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The catalogue of togglable features. `FeatureEntitlement` rows reference
+/// `featureKey`; a key with no definition is rejected by the resolver.
+model FeatureDefinition {
+  id  String @id @default(cuid())
+  key String @unique @db.VarChar(120)
+
+  name        String @db.VarChar(180)
+  description String @db.VarChar(600)
+  /// Grouping for the admin UI, e.g. `gamification`, `assessment`, `reporting`.
+  category    String @db.VarChar(60)
+
+  /// Value used when no entitlement row matches at any scope.
+  defaultEnabled     Boolean @default(true)
+  /// Blueprint 06: platform safety rules sit above every tenant override.
+  isSafetyRule       Boolean @default(false)
+  /// Which `EntitlementScopeType` values may configure this key, as a JSON array.
+  configurableScopes Json
+  /// Plans that include the feature at all, as a JSON array of SubscriptionPlan.
+  includedInPlans    Json?
+  /// Features that must be on for this one to work, as a JSON array of keys.
+  dependsOn          Json?
+
+  /// Off means the switch is hidden everywhere — used to retire a feature.
+  isVisible Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category, sortOrder])
+  @@map("feature_definitions")
+}
+
+/// Platform-level configuration that is not a feature toggle: default limits,
+/// contact addresses, maintenance banner text.
+model PlatformSetting {
+  id    String @id @default(cuid())
+  key   String @unique @db.VarChar(120)
+  value Json
+
+  description String? @db.VarChar(500)
+  /// Settings marked secret are never returned to a non-platform role.
+  isSecret    Boolean @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  updatedById String?  @db.VarChar(32)
+
+  @@map("platform_settings")
+}
+
+/// Blueprint 13: scheduled work must be observable — when it ran, what it did,
+/// and whether it failed.
+model JobRun {
+  id     String @id @default(cuid())
+  /// e.g. `notifications.digest`, `leaderboard.recompute`, `retention.purge`.
+  jobKey String @db.VarChar(120)
+
+  /// RUNNING | SUCCEEDED | FAILED | SKIPPED.
+  status String @db.VarChar(20)
+
+  startedAt      DateTime  @default(now())
+  finishedAt     DateTime?
+  durationMs     Int?
+  itemsProcessed Int       @default(0)
+  itemsFailed    Int       @default(0)
+  failureReason  String?   @db.Text
+  detail         Json?
+
+  @@index([jobKey, startedAt])
+  @@index([status])
+  @@map("job_runs")
+}
+
+/// Blueprint 13 incident handling: severity, timeline, owner, resolution and the
+/// learning captured afterwards.
+model IncidentRecord {
+  id        String  @id @default(cuid())
+  reference String  @unique @db.VarChar(24)
+  /// Null when the incident spans the whole platform.
+  schoolId  String? @db.VarChar(32)
+
+  title    String @db.VarChar(200)
+  /// SEV1 | SEV2 | SEV3 | SEV4.
+  severity String @db.VarChar(10)
+  /// OPEN | MITIGATED | RESOLVED | POST_REVIEW | CLOSED.
+  status   String @default("OPEN") @db.VarChar(20)
+
+  summary       String  @db.Text
+  impactSummary String? @db.Text
+  /// Whether personal data was or may have been affected — drives blueprint 10
+  /// breach notification duties.
+  dataAffected  Boolean @default(false)
+
+  detectedAt        DateTime
+  mitigatedAt       DateTime?
+  resolvedAt        DateTime?
+  ownerUserId       String?   @db.VarChar(32)
+  rootCause         String?   @db.Text
+  preventiveActions String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, severity])
+  @@index([schoolId])
+  @@map("incident_records")
+}
+
+/// Blueprint 17 versioning log, held in the product so schools can see what
+/// changed and when without reading a separate document.
+model ReleaseNote {
+  id      String @id @default(cuid())
+  version String @unique @db.VarChar(40)
+
+  title                         String  @db.VarChar(200)
+  summary                       String  @db.Text
+  /// Grouped change list: { "added": [...], "changed": [...], "fixed": [...] }.
+  changes                       Json
+  /// Blueprint 05: a change that alters how evidence is interpreted must say so.
+  affectsEvidenceInterpretation Boolean @default(false)
+  /// Audience visibility, as a JSON array of RoleKey.
+  audience                      Json?
+
+  releasedAt  DateTime
+  isPublished Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([releasedAt])
+  @@map("release_notes")
+}

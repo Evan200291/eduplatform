@@ -1,0 +1,161 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Curriculum — programs, units, topics, objectives and prerequisites
+// Blueprint 02 "Curriculum engine": a curriculum is a structured, versioned
+// hierarchy so learning paths can be generated and mastery can be attributed to
+// a specific objective rather than to a vague "topic".
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CurriculumProgram {
+  id        String  @id @default(cuid())
+  schoolId  String
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  gradeId   String?
+  grade     Grade?  @relation(fields: [gradeId], references: [id], onDelete: SetNull)
+
+  name        String  @db.VarChar(180)
+  key         String  @db.VarChar(80)
+  description String? @db.Text
+  /// Curriculum framework this maps to, e.g. "England KS1 Mathematics".
+  framework   String? @db.VarChar(180)
+
+  status    ContentStatus    @default(DRAFT)
+  ownership ContentOwnership @default(MIDAS_ORIGINAL)
+  version   Int              @default(1)
+  sortOrder Int              @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+  archivedAt  DateTime?
+  createdById String?   @db.VarChar(32)
+
+  units Unit[]
+
+  @@unique([schoolId, subjectId, key])
+  @@index([schoolId, status])
+  @@map("curriculum_programs")
+}
+
+model Unit {
+  id        String            @id @default(cuid())
+  schoolId  String
+  school    School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  programId String
+  program   CurriculumProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  name        String        @db.VarChar(180)
+  key         String        @db.VarChar(80)
+  description String?       @db.Text
+  sortOrder   Int           @default(0)
+  status      ContentStatus @default(DRAFT)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime?
+  createdById String?   @db.VarChar(32)
+
+  topics Topic[]
+
+  @@unique([programId, key])
+  @@index([schoolId])
+  @@map("units")
+}
+
+model Topic {
+  id        String  @id @default(cuid())
+  schoolId  String
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  unitId    String
+  unit      Unit    @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  gradeId   String?
+  grade     Grade?  @relation(fields: [gradeId], references: [id], onDelete: SetNull)
+
+  name        String  @db.VarChar(180)
+  key         String  @db.VarChar(80)
+  description String? @db.Text
+
+  difficultyBand   DifficultyBand @default(DEVELOPING)
+  estimatedMinutes Int            @default(20)
+  sortOrder        Int            @default(0)
+  status           ContentStatus  @default(DRAFT)
+  /// Percentage of correct, recent evidence required before MASTERED is claimed.
+  masteryThreshold Int            @default(80)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+  archivedAt  DateTime?
+  createdById String?   @db.VarChar(32)
+
+  objectives         LearningObjective[]
+  lessons            Lesson[]
+  activities         Activity[]
+  assessments        Assessment[]
+  masteryRecords     MasteryRecord[]
+  progressRecords    ProgressRecord[]
+  learningPathItems  LearningPathItem[]
+  recommendations    Recommendation[]
+  topicEvaluations   TopicEvaluation[]
+  teacherAssessments TeacherAssessment[]
+  assignments        Assignment[]
+  missions           Mission[]
+
+  /// Topics that must be secure before this one is offered.
+  prerequisites TopicPrerequisite[] @relation("TopicPrerequisiteOwner")
+  requiredFor   TopicPrerequisite[] @relation("TopicPrerequisiteRequired")
+
+  @@unique([unitId, key])
+  @@index([schoolId, subjectId])
+  @@index([schoolId, status])
+  @@map("topics")
+}
+
+/// Blueprint 02: the path engine must respect ordering and prerequisites.
+model TopicPrerequisite {
+  id              String @id @default(cuid())
+  topicId         String
+  topic           Topic  @relation("TopicPrerequisiteOwner", fields: [topicId], references: [id], onDelete: Cascade)
+  requiredTopicId String
+  requiredTopic   Topic  @relation("TopicPrerequisiteRequired", fields: [requiredTopicId], references: [id], onDelete: Cascade)
+
+  /// A soft prerequisite warns the teacher; a hard one blocks the item.
+  isHard    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([topicId, requiredTopicId])
+  @@index([requiredTopicId])
+  @@map("topic_prerequisites")
+}
+
+/// Blueprint 12: mastery is attributed to an objective, not merely to a topic.
+model LearningObjective {
+  id       String @id @default(cuid())
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  topicId  String
+  topic    Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  /// Short human reference, e.g. "N3.2a".
+  code           String         @db.VarChar(40)
+  statement      String         @db.VarChar(600)
+  notes          String?        @db.Text
+  difficultyBand DifficultyBand @default(DEVELOPING)
+  sortOrder      Int            @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activityLinks  ActivityObjective[]
+  masteryRecords MasteryRecord[]
+  questions      Question[]
+
+  @@unique([topicId, code])
+  @@index([schoolId])
+  @@map("learning_objectives")
+}

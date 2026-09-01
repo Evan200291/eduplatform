@@ -1,0 +1,130 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Learning paths and recommendations
+// Blueprint 03 "Learning path — Modes": grade, subject, topic or hybrid.
+// Blueprint 04: "The system proposes. The teacher decides." A recommendation is
+// never applied to a live path until it reaches APPROVED (or AUTO_APPROVED where
+// the school has explicitly enabled that).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model LearningPath {
+  id        String  @id @default(cuid())
+  schoolId  String
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  mode     PathMode @default(HYBRID)
+  name     String   @db.VarChar(180)
+  version  Int      @default(1)
+  /// Only one path per student per subject is active at a time.
+  isActive Boolean  @default(true)
+
+  /// Blueprint 04: a generated path is inert until a teacher approves it.
+  requiresApproval Boolean   @default(true)
+  approvedById     String?   @db.VarChar(32)
+  approvedAt       DateTime?
+  generatedAt      DateTime  @default(now())
+  generatorNote    String?   @db.VarChar(600)
+  notes            String?   @db.Text
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+  archivedAt  DateTime?
+
+  items           LearningPathItem[]
+  recommendations Recommendation[]
+
+  @@index([schoolId, subjectId])
+  @@index([studentId, isActive])
+  @@map("learning_paths")
+}
+
+/// One step on a path. Exactly one of topic/lesson/activity/assessment is set.
+model LearningPathItem {
+  id     String       @id @default(cuid())
+  pathId String
+  path   LearningPath @relation(fields: [pathId], references: [id], onDelete: Cascade)
+
+  topicId      String?
+  topic        Topic?      @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  lessonId     String?
+  lesson       Lesson?     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  activityId   String?
+  activity     Activity?   @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  assessmentId String?
+  assessment   Assessment? @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  sortOrder          Int            @default(0)
+  status             PathItemStatus @default(LOCKED)
+  isRequired         Boolean        @default(true)
+  /// Blueprint 04: a teacher can insert or remove steps, and that is recorded.
+  addedByTeacherId   String?        @db.VarChar(32)
+  removedByTeacherId String?        @db.VarChar(32)
+  removedAt          DateTime?
+  reason             String?        @db.VarChar(400)
+
+  unlockedAt  DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  dueAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pathId, sortOrder])
+  @@index([topicId])
+  @@map("learning_path_items")
+}
+
+/// Blueprint 04 recommendation approval workflow. The decision itself is the
+/// record — approve, modify, reject or defer — and it is always attributable.
+model Recommendation {
+  id        String @id @default(cuid())
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User   @relation("RecommendationStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  topicId   String?
+  topic     Topic?   @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  pathId       String?
+  path         LearningPath?      @relation(fields: [pathId], references: [id], onDelete: SetNull)
+  assessmentId String?
+  assessment   Assessment?        @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  attemptId    String?
+  attempt      AssessmentAttempt? @relation(fields: [attemptId], references: [id], onDelete: SetNull)
+
+  origin         RecommendationOrigin
+  status         RecommendationStatus @default(PENDING_APPROVAL)
+  /// Blueprint 04: the teacher must be told *why*, in plain language.
+  rationale      String               @db.Text
+  /// The concrete change proposed (items to add, reorder, unlock or remove).
+  proposal       Json
+  /// The change actually applied, when the teacher modified the proposal.
+  appliedChange  Json?
+  priority       Int                  @default(0)
+  evidenceSource EvidenceSource       @default(SYSTEM_ASSESSMENT)
+  confidence     EvidenceConfidence   @default(MODERATE)
+
+  decidedById   String?
+  decidedBy     User?     @relation("RecommendationDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt     DateTime?
+  decisionNote  String?   @db.VarChar(600)
+  /// Auto-approval deadline where the school opted into it.
+  autoApproveAt DateTime?
+  expiresAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId, status])
+  @@index([studentId, status])
+  @@index([decidedById])
+  @@map("recommendations")
+}

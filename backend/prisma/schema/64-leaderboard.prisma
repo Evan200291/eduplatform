@@ -1,0 +1,73 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Leaderboards
+// Blueprint 03: leaderboards are OFF by default, identity display is
+// configurable (real name, nickname, avatar only, anonymous rank), and schools
+// may choose cooperative or personal-best rankings instead of raw points.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model LeaderboardConfiguration {
+  id       String @id @default(cuid())
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  name    String           @db.VarChar(140)
+  scope   LeaderboardScope @default(CLASS)
+  /// Id of the class, grade, subject, cohort or event this board covers.
+  scopeId String?          @db.VarChar(32)
+
+  identityMode LeaderboardIdentityMode @default(NICKNAME)
+  rankingMode  LeaderboardRankingMode  @default(PERSONAL_BEST)
+
+  isActive        Boolean @default(false)
+  /// Rolling window length. Null means all-time.
+  periodDays      Int?    @default(7)
+  /// Boards with too few participants are hidden to protect individuals.
+  minParticipants Int     @default(5)
+  /// Only the top N are displayed; everyone else sees their own position only.
+  showTopN        Int     @default(10)
+  /// Blueprint 03: a learner can always opt out of appearing.
+  allowOptOut     Boolean @default(true)
+
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime?
+  createdById String?   @db.VarChar(32)
+
+  entries LeaderboardEntry[]
+
+  @@index([schoolId, isActive])
+  @@map("leaderboard_configurations")
+}
+
+/// A materialized standing for one student in one period. Recomputed on a
+/// schedule so a board read never scans the whole points ledger.
+model LeaderboardEntry {
+  id        String                   @id @default(cuid())
+  schoolId  String
+  school    School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  configId  String
+  config    LeaderboardConfiguration @relation(fields: [configId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User                     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  periodStart DateTime
+  periodEnd   DateTime
+
+  score        Int     @default(0)
+  rank         Int
+  previousRank Int?
+  /// Snapshot of the label actually shown, honouring the identity mode.
+  displayLabel String  @db.VarChar(120)
+  /// Set when the student has opted out; the row is kept for their own view.
+  isHidden     Boolean @default(false)
+
+  computedAt DateTime @default(now())
+
+  @@unique([configId, studentId, periodStart], map: "leaderboard_entry_period_unique")
+  @@index([configId, periodStart, rank])
+  @@index([schoolId])
+  @@map("leaderboard_entries")
+}

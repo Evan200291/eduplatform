@@ -1,0 +1,164 @@
+/*
+ * Default Midas design tokens.
+ *
+ * These mirror `compileTokens(THEME_DEFAULTS)` from
+ * backend/src/modules/theme/theme.tokens.ts with no ageMode applied
+ * (Inter / 16px / radius `md` / density `comfortable`).
+ *
+ * They exist so the app renders correctly before a tenant theme resolves —
+ * on the login screen, on a cold cache, or when the theme endpoint is
+ * unavailable. Once a school's compiled tokens arrive they are injected as a
+ * higher-priority <style> block (see src/theme/theme-tokens.ts), overriding
+ * everything here.
+ *
+ * Do not hand-tune values here to change a school's look; change the theme
+ * record on the server. This file is the *fallback*, not the source of truth.
+ */
+
+:root {
+  /* Brand families: base, -soft, -muted, -strong, -contrast
+   *
+   * `-strong` is the pressed/hover state and also the solid bottom edge under
+   * a raised button, so it must stay clearly darker than the base — that edge
+   * is what makes a control read as physically pressable rather than flat. */
+  --midas-color-primary: #2563eb;
+  --midas-color-primary-soft: #eaf1fe;
+  --midas-color-primary-muted: #a9c6fa;
+  --midas-color-primary-strong: #1a49b8;
+  --midas-color-primary-contrast: #ffffff;
+
+  --midas-color-secondary: #8b5cf6;
+  --midas-color-secondary-soft: #f4eefe;
+  --midas-color-secondary-muted: #d0b8fb;
+  --midas-color-secondary-strong: #6d34e0;
+  --midas-color-secondary-contrast: #ffffff;
+
+  --midas-color-accent: #f97316;
+  --midas-color-accent-soft: #fff1e7;
+  --midas-color-accent-muted: #fcc39a;
+  --midas-color-accent-strong: #c25a0f;
+  --midas-color-accent-contrast: #ffffff;
+
+  /* ── Playful accents ──────────────────────────────────────────────────────
+   * A fixed decorative set, deliberately *outside* the tenant-theme families
+   * above. A school rebrands its primary; it does not rebrand "the colour the
+   * fourth stat tile happens to be". Keeping these separate means a screen can
+   * be genuinely colourful without every school's palette having to carry six
+   * more configurable hues, and without a rebrand turning a rainbow muddy.
+   *
+   * Each pairs a saturated base for fills and icons with a pale tint for
+   * backgrounds. Bases are all AA-contrast against white text at 4.5:1+. */
+  --midas-color-play-1: #2563eb; /* blue   */
+  --midas-color-play-1-soft: #e8f0fe;
+  --midas-color-play-2: #8b5cf6; /* violet */
+  --midas-color-play-2-soft: #f2ecfe;
+  --midas-color-play-3: #ec4899; /* pink   */
+  --midas-color-play-3-soft: #fdeaf4;
+  --midas-color-play-4: #f97316; /* orange */
+  --midas-color-play-4-soft: #fff0e6;
+  --midas-color-play-5: #16a34a; /* green  */
+  --midas-color-play-5-soft: #e7f6ed;
+  --midas-color-play-6: #0891b2; /* teal   */
+  --midas-color-play-6-soft: #e4f5f9;
+
+  --midas-color-success: #16a34a;
+  --midas-color-success-soft: #e6f6ec;
+  --midas-color-success-muted: #9fdcb7;
+  --midas-color-success-strong: #11803a;
+  --midas-color-success-contrast: #ffffff;
+
+  --midas-color-warning: #d97706;
+  --midas-color-warning-soft: #fdf3e4;
+  --midas-color-warning-muted: #f2cb98;
+  --midas-color-warning-strong: #a95d05;
+  --midas-color-warning-contrast: #ffffff;
+
+  --midas-color-danger: #dc2626;
+  --midas-color-danger-soft: #fdeaea;
+  --midas-color-danger-muted: #f3aaaa;
+  --midas-color-danger-strong: #ac1d1d;
+  --midas-color-danger-contrast: #ffffff;
+
+  /* Semantic surfaces and text.
+   *
+   * The neutrals carry a slight blue bias matching the primary rather than
+   * being pure grey — a page of true-neutral grey next to a blue accent reads
+   * as unconsidered, and the bias is what makes the palette hold together. */
+  --midas-color-surface: #ffffff;
+  --midas-color-surface-raised: #ffffff;
+  --midas-color-surface-sunken: #f1f4f9;
+  --midas-color-background: #f7f9fc;
+  --midas-color-text-body: #0f172a;
+  --midas-color-text-muted: #64748b;
+  --midas-color-text-on-brand: #ffffff;
+  --midas-color-border: #e2e8f0;
+  --midas-color-border-strong: #cbd5e1;
+  /* Deliberately not the brand colour, so it stays visible on brand buttons. */
+  --midas-color-focus: #f97316;
+  --midas-color-overlay: rgba(15, 23, 42, 0.55);
+
+  /* Typography. The doubled `font-font-*` segment matches the server emitter. */
+  --midas-font-font-heading: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+  --midas-font-font-body: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+  --midas-font-size-xs: 12px;
+  --midas-font-size-sm: 14px;
+  --midas-font-size-base: 16px;
+  --midas-font-size-md: 16px;
+  --midas-font-size-lg: 18px;
+  --midas-font-size-xl: 22px;
+  --midas-font-size-2xl: 28px;
+  --midas-font-size-3xl: 36px;
+  --midas-font-weight-body: 400;
+  --midas-font-weight-medium: 600;
+  --midas-font-weight-heading: 800;
+  --midas-font-line-height-body: 1.55;
+  --midas-font-line-height-heading: 1.15;
+  --midas-font-letter-spacing-heading: -0.02em;
+
+  /* Spacing: a 4px step scaled by age mode × density. */
+  --midas-space-0: 0px;
+  --midas-space-1: 4px;
+  --midas-space-2: 8px;
+  --midas-space-3: 12px;
+  --midas-space-4: 16px;
+  --midas-space-6: 24px;
+  --midas-space-8: 32px;
+  --midas-space-12: 48px;
+  --midas-space-16: 64px;
+  --midas-space-touch-target: 44px;
+  --midas-space-page-gutter: 16px;
+
+  --midas-radius-none: 0px;
+  --midas-radius-sm: 6px;
+  --midas-radius-md: 12px;
+  --midas-radius-lg: 18px;
+  --midas-radius-pill: 999px;
+
+  /* Two-layer shadows: a tight contact shadow that anchors the element to the
+   * page, plus a wider soft one for the lift. A single blurred shadow is what
+   * makes a card look like it is floating rather than resting. */
+  --midas-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --midas-shadow-md: 0 2px 4px rgba(15, 23, 42, 0.05), 0 6px 16px rgba(15, 23, 42, 0.08);
+  --midas-shadow-lg: 0 4px 8px rgba(15, 23, 42, 0.06), 0 16px 40px rgba(15, 23, 42, 0.12);
+
+  --midas-motion-duration-fast: 120ms;
+  --midas-motion-duration-base: 220ms;
+  --midas-motion-duration-slow: 420ms;
+  --midas-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --midas-motion-easing-emphasis: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --midas-motion-celebration-scale: 1.06;
+}
+
+/*
+ * Honour the OS setting even before a theme with `reduceMotion` loads.
+ * The server collapses these to 0ms too; this is the client-side safety net.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --midas-motion-duration-fast: 0ms;
+    --midas-motion-duration-base: 0ms;
+    --midas-motion-duration-slow: 0ms;
+    --midas-motion-easing-emphasis: linear;
+    --midas-motion-celebration-scale: 1;
+  }
+}

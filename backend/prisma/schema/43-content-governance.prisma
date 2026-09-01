@@ -1,0 +1,126 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Content governance — ownership, publication, moderation and reporting
+// Blueprint 05 "Ownership labels" and safety controls; blueprint 10 legal
+// position (who owns what, and what may be redistributed).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The evidence trail behind blueprint 10. One row per owned content object.
+model ContentOwnershipRecord {
+  id       String @id @default(cuid())
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  /// One of CURRICULUM_PROGRAM | UNIT | TOPIC | LESSON | ACTIVITY | MEDIA.
+  targetType String @db.VarChar(40)
+  targetId   String @db.VarChar(32)
+
+  ownership        ContentOwnership
+  licenseHolder    String?          @db.VarChar(200)
+  licenseReference String?          @db.VarChar(200)
+  licenseStartsAt  DateTime?
+  licenseEndsAt    DateTime?
+  /// Whether the school may share this outside its own tenant.
+  canRedistribute  Boolean          @default(false)
+  notes            String?          @db.Text
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?  @db.VarChar(32)
+
+  @@unique([targetType, targetId])
+  @@index([schoolId, ownership])
+  @@map("content_ownership_records")
+}
+
+/// Blueprint 05: publication is an explicit, reviewed, reversible event.
+model ContentPublication {
+  id       String @id @default(cuid())
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  lessonId   String?
+  lesson     Lesson?   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  activityId String?
+  activity   Activity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  version       Int
+  status        ContentStatus @default(APPROVED)
+  changeSummary String?       @db.VarChar(500)
+  reviewNotes   String?       @db.Text
+
+  reviewedById  String?   @db.VarChar(32)
+  publishedById String?   @db.VarChar(32)
+  effectiveFrom DateTime  @default(now())
+  publishedAt   DateTime?
+  retiredAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId, status])
+  @@index([lessonId])
+  @@index([activityId])
+  @@map("content_publications")
+}
+
+/// Blueprint 03/05: students and teachers can flag content problems, and every
+/// flag gets an owner and an outcome.
+model ContentReport {
+  id       String @id @default(cuid())
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  reporterId String
+  reporter   User   @relation("ContentReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  lessonId   String?
+  lesson     Lesson?   @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  activityId String?
+  activity   Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  /// Free target reference when the report is about media or a whole topic.
+  targetType String?   @db.VarChar(40)
+  targetId   String?   @db.VarChar(32)
+
+  reason  ContentReportReason
+  details String?             @db.Text
+
+  decision        ModerationDecision @default(PENDING)
+  resolutionNotes String?            @db.Text
+  resolvedById    String?            @db.VarChar(32)
+  resolvedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reviews ContentModerationReview[]
+
+  @@index([schoolId, decision])
+  @@index([reporterId])
+  @@map("content_reports")
+}
+
+/// The audited review steps taken on a piece of content or on a report.
+model ContentModerationReview {
+  id String @id @default(cuid())
+
+  reportId String?
+  report   ContentReport? @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  targetType String @db.VarChar(40)
+  targetId   String @db.VarChar(32)
+
+  reviewerId String?
+  reviewer   User?   @relation("ModerationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  decision      ModerationDecision
+  notes         String?            @db.Text
+  /// Set when the review was escalated to platform safety staff.
+  escalatedToId String?            @db.VarChar(32)
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([targetType, targetId])
+  @@index([reportId])
+  @@map("content_moderation_reviews")
+}

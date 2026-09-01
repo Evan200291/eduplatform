@@ -1,0 +1,203 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Tenancy configuration — school settings, subscriptions, entitlements, themes
+// Blueprint refs: 05 (Admin Panel), 06 (Feature Modularity), 07 (Theme), 09 (Commercial)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// One row per school. Holds the school-level layer of the blueprint 06
+/// configuration precedence chain. Anything that must vary per grade, class,
+/// subject or user group lives in `FeatureEntitlement` instead.
+model SchoolSettings {
+  id       String @id @default(cuid())
+  schoolId String @unique
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  // ── Blueprint 03 gamification controls ────────────────────────────────────
+  pointsEnabled           Boolean                 @default(true)
+  badgesEnabled           Boolean                 @default(true)
+  streaksEnabled          Boolean                 @default(true)
+  companionEnabled        Boolean                 @default(true)
+  missionsEnabled         Boolean                 @default(true)
+  leaderboardEnabled      Boolean                 @default(false)
+  leaderboardScope        LeaderboardScope        @default(CLASS)
+  leaderboardIdentityMode LeaderboardIdentityMode @default(NICKNAME)
+  leaderboardRankingMode  LeaderboardRankingMode  @default(PERSONAL_BEST)
+  /// 0 = quiet, 100 = full celebration. Blueprint 07 age-based intensity.
+  gamificationIntensity   Int                     @default(60)
+  /// Blueprint 03: companion decay is opt-in only and never punitive by default.
+  companionDecayEnabled   Boolean                 @default(false)
+
+  // ── Blueprint 03 assessment and placement controls ────────────────────────
+  screeningEnabled               Boolean @default(true)
+  screeningMaxItems              Int     @default(24)
+  screeningTimeLimitMinutes      Int?
+  ongoingCheckFrequencyDays      Int     @default(14)
+  reassessmentCooldownDays       Int     @default(7)
+  allowStudentSelfReassess       Boolean @default(false)
+  /// Blueprint 04: the teacher remains the decision maker by default.
+  recommendationApprovalRequired Boolean @default(true)
+  /// When set, a pending recommendation auto-approves after this many hours.
+  recommendationAutoApproveHours Int?
+
+  // ── Blueprint 04 homework controls ────────────────────────────────────────
+  homeworkEnabled     Boolean      @default(true)
+  defaultLateBehavior LateBehavior @default(ALLOW_LATE_FLAGGED)
+  defaultGraceHours   Int          @default(24)
+
+  // ── Blueprint 06 notification controls ────────────────────────────────────
+  emailNotificationsEnabled Boolean @default(true)
+  pushNotificationsEnabled  Boolean @default(false)
+  digestEnabled             Boolean @default(true)
+  quietHoursStart           Int?
+  quietHoursEnd             Int?
+
+  // ── Blueprint 05 identity and access controls ─────────────────────────────
+  /// Array of `LoginMethod` values permitted for this school.
+  allowedLoginMethods Json
+  studentPinRequired  Boolean @default(true)
+  studentCodeLength   Int     @default(8)
+  sessionIdleMinutes  Int     @default(120)
+
+  // ── Blueprint 05/10 safety and privacy controls ───────────────────────────
+  contentReportingEnabled  Boolean @default(true)
+  moderationRequired       Boolean @default(true)
+  allowStudentAvatarUpload Boolean @default(false)
+  /// Blueprint 10 retention: months of learner activity kept before purge review.
+  dataRetentionMonths      Int     @default(36)
+  /// Blueprint 03/04: parent access is a planned future role, off by default.
+  parentPortalEnabled      Boolean @default(false)
+
+  // ── Assessment/learning engine config ──────────────────────────────────────
+  /// Array of `PathMode` values this school permits when generating a learning
+  /// path. Null/unset = every mode allowed, which is today's behavior.
+  allowedPathModes            Json?
+  /// Item-count thresholds feeding `confidenceFromEvidence`. Defaults match the
+  /// values that were hardcoded in the assessment engine (moderate at 3 items
+  /// considered, high at 8), so an unconfigured school sees no change.
+  confidenceThresholdModerate Int     @default(3)
+  confidenceThresholdHigh     Int     @default(8)
+  /// Per-`AgeMode` override of `Assessment.maxAttempts`, e.g.
+  /// `{"EARLY_YEARS": 5, "PRIMARY": 4}`. An age with no entry (or a school with
+  /// this unset) falls back to the assessment's own flat `maxAttempts`, which is
+  /// today's only behavior.
+  attemptLimitByAgeMode       Json?
+  /// Seeds `shuffleItems` for a newly created assessment when the caller does
+  /// not specify one explicitly. Matches the schema default of `true`.
+  defaultShuffleItems         Boolean @default(true)
+
+  // ── Companion growth config ────────────────────────────────────────────────
+  /// Overrides `STAGE_THRESHOLDS` in `companion.growth.ts`. Array of
+  /// `{ stage: CompanionStage, growthPoints: number }`, ascending and covering
+  /// every stage. Null/unset = the hardcoded defaults, unchanged.
+  companionStageThresholds Json?
+
+  // ── Streak behavior config ─────────────────────────────────────────────────
+  /// Freezes granted to a brand-new streak, and restored when one breaks.
+  /// Matches the hardcoded `DEFAULT_FREEZES` value of 1.
+  streakDefaultFreezes Int     @default(1)
+  /// Whether Saturday/Sunday count toward a `DAILY_LEARNING` streak's
+  /// continuity. Today's engine counts every calendar day, so this defaults on.
+  streakWeekendsCount  Boolean @default(true)
+  /// Cap on accumulated `freezesRemaining`. Null = unlimited, today's behavior.
+  streakMaxFreezes     Int?
+
+  /// Free-form school overrides that do not warrant a column yet.
+  extraSettings Json?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  updatedById String?  @db.VarChar(32)
+
+  @@map("school_settings")
+}
+
+/// Blueprint 09: subscriptions attach to an organization (multi-school deal) or
+/// directly to a single school (pilot).
+model Subscription {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schoolId       String?
+  school         School?       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  plan     SubscriptionPlan
+  status   SubscriptionStatus @default(TRIALING)
+  interval BillingInterval    @default(ANNUAL)
+
+  licensedStudentSeats Int    @default(0)
+  licensedTeacherSeats Int    @default(0)
+  /// Minor currency units (e.g. pence) to avoid floating point money.
+  pricePerStudentMinor Int?
+  pricePerTeacherMinor Int?
+  currency             String @default("GBP") @db.VarChar(3)
+
+  startsAt    DateTime
+  endsAt      DateTime?
+  trialEndsAt DateTime?
+  renewsAt    DateTime?
+  cancelledAt DateTime?
+  autoRenew   Boolean   @default(true)
+
+  purchaseOrderRef String? @db.VarChar(80)
+  invoiceEmail     String? @db.VarChar(190)
+  notes            String? @db.Text
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?  @db.VarChar(32)
+
+  entitlements FeatureEntitlement[]
+
+  @@index([organizationId])
+  @@index([schoolId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+/// Blueprint 06: "Access is denied unless explicitly allowed by role and active
+/// tenant context." One row = one decision about one feature key at one scope.
+/// The resolver walks scopes in precedence order (see docs/CONFIGURATION.md).
+model FeatureEntitlement {
+  id         String               @id @default(cuid())
+  /// Stable dot-separated key, e.g. `gamification.leaderboard`.
+  featureKey String               @db.VarChar(120)
+  scopeType  EntitlementScopeType
+  enabled    Boolean
+  /// Optional structured limit or variant carried with the decision.
+  value      Json?
+
+  organizationId String?           @db.VarChar(32)
+  schoolId       String?
+  school         School?           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  organization   Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "feature_entitlements_org_fk")
+  subscriptionId String?
+  subscription   Subscription?     @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  plan           SubscriptionPlan?
+  roleKey        RoleKey?
+  gradeId        String?
+  grade          Grade?            @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  classId        String?
+  class          Class?            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectId      String?
+  subject        Subject?          @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  userGroupId    String?
+  userGroup      UserGroup?        @relation(fields: [userGroupId], references: [id], onDelete: Cascade)
+
+  /// Higher wins when two rows share a scope type. Normally left at 0.
+  precedence   Int     @default(0)
+  /// Blueprint 06: every visibility decision is auditable and reasoned.
+  reason       String? @db.VarChar(300)
+  /// Blueprint 06 platform safety rules cannot be overridden by tenants.
+  isSafetyRule Boolean @default(false)
+
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?  @db.VarChar(32)
+
+  @@index([featureKey, scopeType])
+  @@index([schoolId, featureKey])
+  @@index([organizationId, featureKey])
+  @@map("feature_entitlements")
+}

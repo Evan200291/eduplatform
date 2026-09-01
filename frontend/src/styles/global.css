@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Global base layer.
+ *
+ * Everything here reads from the `--midas-*` tokens defined in tokens.css (and
+ * overridden at runtime by the tenant theme). No literal colours, sizes or
+ * durations belong in this file — if you need a new value, add a token.
+ */
+
+@layer base {
+  html {
+    /* 100% keeps the browser's own font-size preference meaningful for rem
+     * based utilities. Body text is sized from the token instead, multiplied by
+     * the in-app text-scale preference so users can enlarge type on top of
+     * whatever age mode the school configured. */
+    font-size: 100%;
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    /* A single element inside the page that refuses to shrink below the
+     * viewport width (an unwrapped table, a menu positioned off past the
+     * right edge, a fixed-width row of controls in a tight top bar) would
+     * otherwise widen the whole document and let the page itself scroll
+     * sideways, leaving blank space to the right of everything. Wide content
+     * still gets its own horizontal scroll — see `.scroll-x` — this only
+     * stops the *page* from doing it. */
+    overflow-x: hidden;
+    background-color: var(--midas-color-background);
+    color: var(--midas-color-text-body);
+    font-family: var(--midas-font-font-body);
+    font-size: calc(var(--midas-font-size-base) * var(--midas-user-text-scale, 1));
+    font-weight: var(--midas-font-weight-body);
+    line-height: var(--midas-font-line-height-body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--midas-font-font-heading);
+    font-weight: var(--midas-font-weight-heading);
+    line-height: var(--midas-font-line-height-heading);
+    letter-spacing: var(--midas-font-letter-spacing-heading);
+    text-wrap: balance;
+  }
+
+  /* A single visible focus treatment for the whole product. Never remove it —
+   * keyboard operability is a hard accessibility requirement, and the focus
+   * token is deliberately not the brand colour so it survives on brand fills. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 3px solid var(--midas-color-focus);
+    outline-offset: 2px;
+    border-radius: var(--midas-radius-sm);
+  }
+
+  /* Interactive targets never fall below the accessible touch floor, which the
+   * token raises further for younger age modes. */
+  :where(button, [role='button'], a[role='button'], summary) {
+    min-height: var(--midas-space-touch-target);
+  }
+
+  ::selection {
+    background-color: var(--midas-color-primary-muted);
+    color: var(--midas-color-text-body);
+  }
+
+  ::placeholder {
+    color: var(--midas-color-text-muted);
+    opacity: 1;
+  }
+
+  hr {
+    border: 0;
+    border-top: 1px solid var(--midas-color-border);
+  }
+
+  /* Long-form learner content should not run past a comfortable measure. */
+  .prose-measure {
+    max-width: 68ch;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+}
+
+@layer components {
+  /* Keyboard users land on this first; it stays out of the way until focused. */
+  .skip-link {
+    position: absolute;
+    left: var(--midas-space-2);
+    top: var(--midas-space-2);
+    z-index: 100;
+    transform: translateY(-200%);
+    padding: var(--midas-space-2) var(--midas-space-4);
+    border-radius: var(--midas-radius-md);
+    background-color: var(--midas-color-surface);
+    color: var(--midas-color-text-body);
+    box-shadow: var(--midas-shadow-lg);
+    transition: transform var(--midas-motion-duration-fast) var(--midas-motion-easing-standard);
+  }
+
+  .skip-link:focus-visible {
+    transform: translateY(0);
+  }
+}
+
+@layer utilities {
+  /* Suppresses animation for users who asked for it, belt-and-braces with the
+   * server-side `reduceMotion` flag which already zeroes the duration tokens. */
+  @media (prefers-reduced-motion: reduce) {
+    .motion-safe-only {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--midas-color-border-strong) transparent;
+  }
+}
+
+/*
+ * Per-user accessibility overrides, set from src/theme/preferences.ts.
+ * These live outside @layer so they win over both Tailwind utilities and the
+ * tenant theme's token block — a learner's explicit choice outranks branding.
+ */
+
+/* An explicit "reduce motion" choice, independent of the OS setting. */
+:root[data-motion='reduced'] {
+  --midas-motion-duration-fast: 0ms;
+  --midas-motion-duration-base: 0ms;
+  --midas-motion-duration-slow: 0ms;
+  --midas-motion-easing-emphasis: linear;
+  --midas-motion-celebration-scale: 1;
+}
+
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Someone chose "full motion" deliberately, so honour it over the OS hint. */
+:root[data-motion='full'] {
+  --midas-motion-duration-fast: 120ms;
+  --midas-motion-duration-base: 220ms;
+  --midas-motion-duration-slow: 420ms;
+}
+
+/*
+ * Client-side high contrast. The school's theme can also be compiled in high
+ * contrast server-side; this is the learner-controlled version, so it only
+ * strengthens what is already there — borders, muted text and focus rings — and
+ * never repaints the brand.
+ */
+:root[data-contrast='high'] {
+  --midas-color-border: var(--midas-color-border-strong);
+  --midas-color-text-muted: var(--midas-color-text-body);
+  --midas-color-surface-sunken: var(--midas-color-surface);
+  --midas-shadow-sm: 0 0 0 1px var(--midas-color-border-strong);
+  --midas-shadow-md: 0 0 0 2px var(--midas-color-border-strong);
+  --midas-shadow-lg: 0 0 0 3px var(--midas-color-border-strong);
+}
+
+:root[data-contrast='high'] :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline-width: 4px;
+}
+

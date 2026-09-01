@@ -1,0 +1,180 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Content — lessons, activities and content versioning
+// Blueprint 05 content lifecycle: Draft → Review → Approved → Published →
+// Revised / Archived.
+// Blueprint 12: "A student response references the exact content version that
+// was presented." That is why `ActivityVersion` exists and why responses point
+// at it rather than at the mutable activity row.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Lesson {
+  id        String  @id @default(cuid())
+  schoolId  String
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topicId   String
+  topic     Topic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  title   String  @db.VarChar(200)
+  key     String  @db.VarChar(80)
+  summary String? @db.VarChar(600)
+  /// Teaching content as Markdown. Rendered client-side with a safe renderer.
+  body    String? @db.Text
+
+  status           ContentStatus    @default(DRAFT)
+  ownership        ContentOwnership @default(MIDAS_ORIGINAL)
+  version          Int              @default(1)
+  difficultyBand   DifficultyBand   @default(DEVELOPING)
+  estimatedMinutes Int              @default(15)
+  ageMode          AgeMode?
+  sortOrder        Int              @default(0)
+  /// Blueprint 07: content can declare it needs audio support to be usable.
+  requiresAudio    Boolean          @default(false)
+
+  heroMediaId String?
+  heroMedia   MediaAsset? @relation("LessonHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+  archivedAt  DateTime?
+  createdById String?   @db.VarChar(32)
+  updatedById String?   @db.VarChar(32)
+
+  sections          LessonSection[]
+  activities        Activity[]
+  learningPathItems LearningPathItem[]
+  assignments       Assignment[]
+  progressRecords   ProgressRecord[]
+  publications      ContentPublication[]
+  reports           ContentReport[]
+
+  @@unique([topicId, key])
+  @@index([schoolId, status])
+  @@index([subjectId])
+  @@map("lessons")
+}
+
+/// A lesson is delivered in ordered sections so the student UI can paginate and
+/// record partial progress. Blueprint 03 "Lessons and activities".
+model LessonSection {
+  id       String @id @default(cuid())
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  heading   String       @db.VarChar(200)
+  body      String       @db.Text
+  /// EXPLANATION or WORKED_EXAMPLE in practice, but any type is allowed.
+  kind      ActivityType @default(EXPLANATION)
+  sortOrder Int          @default(0)
+  mediaId   String?
+  media     MediaAsset?  @relation("LessonSectionMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lessonId, sortOrder])
+  @@map("lesson_sections")
+}
+
+model Activity {
+  id        String  @id @default(cuid())
+  schoolId  String
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topicId   String
+  topic     Topic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  lessonId  String?
+  lesson    Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  title        String       @db.VarChar(200)
+  key          String       @db.VarChar(80)
+  type         ActivityType
+  instructions String?      @db.Text
+  /// Type-specific settings (mini-game rules, sorting buckets, matching pairs).
+  config       Json?
+
+  status            ContentStatus    @default(DRAFT)
+  ownership         ContentOwnership @default(MIDAS_ORIGINAL)
+  /// Points to the highest published `ActivityVersion.version`.
+  currentVersion    Int              @default(1)
+  difficultyBand    DifficultyBand   @default(DEVELOPING)
+  estimatedMinutes  Int              @default(10)
+  /// Points awarded on completion. Blueprint 03 gamification.
+  pointsValue       Int              @default(10)
+  maxAttempts       Int?
+  passThreshold     Int              @default(70)
+  ageMode           AgeMode?
+  sortOrder         Int              @default(0)
+  /// Blueprint 03: only vetted items may appear in the screening assessment.
+  screeningEligible Boolean          @default(false)
+
+  thumbnailMediaId String?
+  thumbnailMedia   MediaAsset? @relation("ActivityThumbnail", fields: [thumbnailMediaId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+  archivedAt  DateTime?
+  createdById String?   @db.VarChar(32)
+  updatedById String?   @db.VarChar(32)
+
+  versions          ActivityVersion[]
+  questions         Question[]
+  objectiveLinks    ActivityObjective[]
+  assessmentItems   AssessmentItem[]
+  learningPathItems LearningPathItem[]
+  assignments       Assignment[]
+  progressRecords   ProgressRecord[]
+  publications      ContentPublication[]
+  reports           ContentReport[]
+  studentResponses  StudentResponse[]
+
+  @@unique([topicId, key])
+  @@index([schoolId, status])
+  @@index([subjectId, type])
+  @@map("activities")
+}
+
+/// An immutable snapshot of an activity at the moment it was published.
+model ActivityVersion {
+  id         String   @id @default(cuid())
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  version                  Int
+  status                   ContentStatus @default(DRAFT)
+  /// Full serialized activity including questions, options and hints.
+  snapshot                 Json
+  changeSummary            String?       @db.VarChar(500)
+  /// Blueprint 05: a revision must say whether it invalidates prior evidence.
+  invalidatesPriorEvidence Boolean       @default(false)
+
+  createdAt   DateTime  @default(now())
+  publishedAt DateTime?
+  createdById String?   @db.VarChar(32)
+
+  studentResponses StudentResponse[]
+  attempts         AssessmentAttempt[]
+
+  @@unique([activityId, version])
+  @@map("activity_versions")
+}
+
+model ActivityObjective {
+  id          String            @id @default(cuid())
+  activityId  String
+  activity    Activity          @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  objectiveId String
+  objective   LearningObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  /// Relative contribution of this activity to the objective's mastery estimate.
+  weight    Int      @default(100)
+  createdAt DateTime @default(now())
+
+  @@unique([activityId, objectiveId])
+  @@index([objectiveId])
+  @@map("activity_objectives")
+}

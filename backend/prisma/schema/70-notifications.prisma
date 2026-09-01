@@ -1,0 +1,104 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Notifications
+// Blueprint 06: "Notifications must have a purpose, recipient, trigger,
+// priority, and action." Every row therefore carries a category, a priority, a
+// source event and an optional action — a notification with none of those is
+// noise and is rejected by the service layer.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Notification {
+  id       String  @id @default(cuid())
+  schoolId String?
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  category NotificationCategory
+  priority NotificationPriority @default(NORMAL)
+  state    NotificationState    @default(PENDING)
+
+  title       String  @db.VarChar(200)
+  body        String  @db.VarChar(1000)
+  /// In-app route the action button navigates to, e.g. `/teacher/recommendations`.
+  actionPath  String? @db.VarChar(300)
+  actionLabel String? @db.VarChar(80)
+
+  /// The trigger. Blueprint 06 requires every notification to name its source.
+  sourceType String? @db.VarChar(40)
+  sourceId   String? @db.VarChar(32)
+  /// Notifications sharing a group key collapse into one digest line.
+  groupKey   String? @db.VarChar(120)
+
+  scheduledFor     DateTime?
+  deliveredAt      DateTime?
+  readAt           DateTime?
+  actionedAt       DateTime?
+  dismissedAt      DateTime?
+  expiresAt        DateTime?
+  /// Set when preferences, quiet hours or entitlements suppressed delivery.
+  suppressedReason String?   @db.VarChar(200)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deliveries NotificationDelivery[]
+
+  @@index([userId, state, createdAt])
+  @@index([schoolId, category])
+  @@index([scheduledFor])
+  @@map("notifications")
+}
+
+/// One row per channel attempt, so an email failure never hides an in-app
+/// notification that was delivered successfully.
+model NotificationDelivery {
+  id             String       @id @default(cuid())
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  channel NotificationChannel
+  state   NotificationState   @default(PENDING)
+
+  attemptCount  Int       @default(0)
+  lastAttemptAt DateTime?
+  deliveredAt   DateTime?
+  failureReason String?   @db.VarChar(400)
+  /// Provider message id where the channel exposes one.
+  providerRef   String?   @db.VarChar(200)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([notificationId, channel])
+  @@index([state, channel])
+  @@map("notification_deliveries")
+}
+
+/// Blueprint 06: the recipient controls what reaches them, within the bounds the
+/// school allows. Category-level overrides live in `categoryOverrides` as
+/// `{ "ASSIGNMENT_DUE_SOON": { "inApp": true, "email": false } }`.
+model NotificationPreference {
+  id       String  @id @default(cuid())
+  schoolId String?
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  userId   String  @unique
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  inAppEnabled Boolean @default(true)
+  emailEnabled Boolean @default(true)
+  pushEnabled  Boolean @default(false)
+
+  digestEnabled   Boolean @default(true)
+  /// DAILY | WEEKLY | NONE.
+  digestFrequency String  @default("DAILY") @db.VarChar(20)
+  quietHoursStart Int?
+  quietHoursEnd   Int?
+
+  categoryOverrides Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
+  @@map("notification_preferences")
+}

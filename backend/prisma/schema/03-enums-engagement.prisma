@@ -1,0 +1,138 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums — assignments, gamification, companion, notifications and operations
+// Blueprint refs: 03 (Gamification, Companion), 04 (Homework), 13 (Operations)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum AssignmentKind {
+  LESSON
+  ACTIVITY
+  QUIZ
+  ASSESSMENT
+  MISSION
+  HOMEWORK
+  TASK
+}
+
+/// Blueprint 03: "A teacher can assign to an individual, group, class, grade, or
+/// subject cohort."
+enum AssignmentTargetType {
+  STUDENT
+  GROUP
+  CLASS
+  GRADE
+  SUBJECT
+}
+
+/// Blueprint 04: monitor started, completed, overdue and excused states.
+enum AssignmentState {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  COMPLETED
+  OVERDUE
+  EXCUSED
+}
+
+enum LateBehavior {
+  BLOCK_AFTER_DUE
+  ALLOW_LATE_FLAGGED
+  ALLOW_LATE_SILENT
+  ALLOW_UNTIL_GRACE_END
+}
+
+enum MissionStatus {
+  NOT_STARTED
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+/// Blueprint 12 "Points ledger principle": each change records a reason, source
+/// event, value, timestamp and reversal where necessary.
+enum PointsReason {
+  ACTIVITY_COMPLETION
+  LESSON_COMPLETION
+  ASSESSMENT_COMPLETION
+  ASSIGNMENT_COMPLETION
+  MISSION_COMPLETION
+  MASTERY_MILESTONE
+  STREAK_BONUS
+  BADGE_AWARD
+  TEACHER_AWARD
+  ONBOARDING_COMPLETION
+  MANUAL_ADJUSTMENT
+  REVERSAL
+}
+
+enum BadgeTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  SPECIAL
+}
+
+enum StreakKind {
+  DAILY_LEARNING
+  WEEKLY_LEARNING
+  ASSIGNMENT_ON_TIME
+  ACCURACY
+}
+
+/// Blueprint 03: the companion grows through learning. No death or severe decay
+/// by default — stages only move forward unless a school opts into decay.
+enum CompanionStage {
+  EGG
+  HATCHLING
+  JUVENILE
+  ADOLESCENT
+  ADULT
+  RADIANT
+}
+
+enum CompanionMood {
+  SLEEPY
+  CALM
+  CONTENT
+  HAPPY
+  EXCITED
+  PROUD
+}
+
+enum RewardKind {
+  COSMETIC_ITEM
+  COMPANION_ACCESSORY
+  AVATAR_ITEM
+  THEME_UNLOCK
+  CERTIFICATE
+  TEACHER_RECOGNITION
+}
+
+enum LeaderboardScope {
+  CLASS
+  GRADE
+  SUBJECT
+  COHORT
+  SCHOOL
+  EVENT
+}
+
+/// Blueprint 03: identity display may use real name, nickname, avatar, or
+/// anonymous rank.
+enum LeaderboardIdentityMode {
+  REAL_NAME
+  NICKNAME
+  AVATAR_ONLY
+  ANONYMOUS_RANK
+}
+
+/// Blueprint 03: "Schools may choose alternative cooperative or personal-best
+/// rankings."
+enum LeaderboardRankingMode {
+  POINTS
+  MASTERY_GAIN
+  ACTIVITY_COUNT
+  PERSONAL_BEST
+  COOPERATIVE_TEAM
+}

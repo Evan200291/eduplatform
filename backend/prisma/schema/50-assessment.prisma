@@ -1,0 +1,199 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Assessment — definitions, attempts, responses and topic evaluations
+// Blueprint 03: screening assesses "across controlled difficulty bands", then
+// produces a placement rather than a grade.
+// Blueprint 12: "Completion alone does not equal mastery" — attempts record raw
+// evidence, `TopicEvaluation` records the inference drawn from it, and the two
+// are never conflated.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Assessment {
+  id        String  @id @default(cuid())
+  schoolId  String
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  /// Null for cross-topic screening assessments.
+  topicId   String?
+  topic     Topic?  @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  kind        AssessmentKind
+  title       String         @db.VarChar(200)
+  key         String         @db.VarChar(80)
+  description String?        @db.Text
+  status      ContentStatus  @default(DRAFT)
+
+  /// Number of items to present. Null means "all items".
+  itemTarget              Int?
+  timeLimitMinutes        Int?
+  /// Blueprint 03: screening steps up and down through difficulty bands.
+  adaptiveEnabled         Boolean        @default(true)
+  startingBand            DifficultyBand @default(DEVELOPING)
+  passThreshold           Int            @default(70)
+  maxAttempts             Int?
+  cooldownDays            Int?
+  /// Whether results may trigger a learning-path recommendation.
+  driveRecommendations    Boolean        @default(true)
+  shuffleItems            Boolean        @default(true)
+  showFeedbackImmediately Boolean        @default(false)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+  archivedAt  DateTime?
+  createdById String?   @db.VarChar(32)
+
+  items             AssessmentItem[]
+  attempts          AssessmentAttempt[]
+  assignments       Assignment[]
+  learningPathItems LearningPathItem[]
+  recommendations   Recommendation[]
+
+  @@unique([schoolId, key])
+  @@index([schoolId, kind, status])
+  @@index([subjectId])
+  @@map("assessments")
+}
+
+model AssessmentItem {
+  id           String     @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  activityId   String
+  activity     Activity   @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  sortOrder       Int            @default(0)
+  difficultyBand  DifficultyBand @default(DEVELOPING)
+  /// Relative weight in the raw score.
+  weight          Int            @default(100)
+  /// Marks an entry point for the adaptive walk through the bands.
+  isAdaptiveEntry Boolean        @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@unique([assessmentId, activityId])
+  @@index([assessmentId, sortOrder])
+  @@map("assessment_items")
+}
+
+model AssessmentAttempt {
+  id           String     @id @default(cuid())
+  schoolId     String
+  school       School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  /// The exact content version the student was shown. Blueprint 12.
+  activityVersionId String?
+  activityVersion   ActivityVersion? @relation(fields: [activityVersionId], references: [id], onDelete: SetNull)
+
+  attemptNumber Int           @default(1)
+  status        AttemptStatus @default(IN_PROGRESS)
+
+  startedAt   DateTime  @default(now())
+  submittedAt DateTime?
+  completedAt DateTime?
+  expiresAt   DateTime?
+
+  scoreRaw          Decimal?        @db.Decimal(10, 2)
+  scoreMax          Decimal?        @db.Decimal(10, 2)
+  scorePercent      Int?
+  itemsPresented    Int             @default(0)
+  itemsCorrect      Int             @default(0)
+  timeSpentSeconds  Int             @default(0)
+  highestBandPassed DifficultyBand?
+  /// Placement outcome text shown to the teacher, not the student.
+  outcomeSummary    String?         @db.VarChar(600)
+
+  /// Practice attempts do not affect placement or mastery.
+  isPractice Boolean @default(false)
+  deviceInfo String? @db.VarChar(300)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  responses        StudentResponse[]
+  topicEvaluations TopicEvaluation[]
+  recommendations  Recommendation[]
+
+  @@unique([assessmentId, studentId, attemptNumber], map: "assessment_attempt_number_unique")
+  @@index([schoolId, status])
+  @@index([studentId, completedAt])
+  @@map("assessment_attempts")
+}
+
+/// The raw evidence row. Immutable once marked, except for a teacher override.
+model StudentResponse {
+  id        String            @id @default(cuid())
+  attemptId String
+  attempt   AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  questionId        String
+  question          Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  activityId        String
+  activity          Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  /// Non-null in normal operation: responses are pinned to a content version.
+  activityVersionId String?
+  activityVersion   ActivityVersion? @relation(fields: [activityVersionId], references: [id], onDelete: SetNull)
+
+  /// Denormalized for tenant-scoped reporting without joining the attempt.
+  studentId String @db.VarChar(32)
+  schoolId  String @db.VarChar(32)
+
+  /// The learner's answer, shaped by question type.
+  response         Json
+  isCorrect        Boolean?
+  pointsAwarded    Decimal        @default(0) @db.Decimal(10, 2)
+  pointsPossible   Decimal        @default(0) @db.Decimal(10, 2)
+  hintsUsed        Int            @default(0)
+  attemptsUsed     Int            @default(1)
+  timeSpentSeconds Int            @default(0)
+  difficultyBand   DifficultyBand @default(DEVELOPING)
+
+  /// TRUE when a teacher changed the automatic mark. Blueprint 04 override trail.
+  teacherOverridden   Boolean   @default(false)
+  teacherOverrideNote String?   @db.VarChar(500)
+  overriddenById      String?   @db.VarChar(32)
+  overriddenAt        DateTime?
+
+  answeredAt DateTime @default(now())
+
+  @@index([attemptId])
+  @@index([studentId, answeredAt])
+  @@index([schoolId, activityId])
+  @@index([questionId])
+  @@map("student_responses")
+}
+
+/// Blueprint 12: the inferred position of a student on one topic, always labelled
+/// with where the evidence came from and how confident the inference is.
+model TopicEvaluation {
+  id        String @id @default(cuid())
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  topicId   String
+  topic     Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  attemptId String?
+  attempt   AssessmentAttempt? @relation(fields: [attemptId], references: [id], onDelete: SetNull)
+
+  band            DifficultyBand
+  masteryLevel    MasteryLevel       @default(NOT_ASSESSED)
+  accuracyPercent Int
+  itemsConsidered Int                @default(0)
+  evidenceSource  EvidenceSource
+  confidence      EvidenceConfidence @default(LOW)
+  notes           String?            @db.VarChar(600)
+
+  evaluatedAt  DateTime  @default(now())
+  /// Set when a newer evaluation replaces this one, keeping the history intact.
+  supersededAt DateTime?
+
+  @@index([schoolId, topicId])
+  @@index([studentId, topicId, evaluatedAt])
+  @@map("topic_evaluations")
+}

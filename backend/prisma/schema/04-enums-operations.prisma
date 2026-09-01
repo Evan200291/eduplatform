@@ -1,0 +1,148 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums — notifications, notes, reporting, support and media
+// Blueprint refs: 04 (Notes, Alerts), 13 (Support model), 12 (Data model)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Blueprint 06: "Notifications must have a purpose, recipient, trigger,
+/// priority, and action."
+enum NotificationCategory {
+  ASSIGNMENT_NEW
+  ASSIGNMENT_DUE_SOON
+  ASSIGNMENT_OVERDUE
+  RECOMMENDATION_PENDING
+  RECOMMENDATION_DECIDED
+  LEARNING_PATH_APPROVED
+  ACHIEVEMENT_EARNED
+  BADGE_EARNED
+  COMPANION_MILESTONE
+  STREAK_AT_RISK
+  INACTIVITY
+  REPEATED_DIFFICULTY
+  STRONG_IMPROVEMENT
+  CONTENT_CHANGED
+  CONTENT_PROBLEM
+  ADMINISTRATIVE
+  SAFETY_REPORT
+  SUBSCRIPTION
+  SUPPORT_UPDATE
+  LEARNING_REMINDER
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum NotificationState {
+  PENDING
+  DELIVERED
+  READ
+  ACTIONED
+  DISMISSED
+  SUPPRESSED
+}
+
+/// Blueprint 04: "Notes have visibility rules: private teacher, authorized
+/// staff, school record, or future parent-visible."
+enum NoteVisibility {
+  PRIVATE_TEACHER
+  AUTHORIZED_STAFF
+  SCHOOL_RECORD
+  PARENT_VISIBLE
+}
+
+/// Blueprint 04: "Sensitive notes require stricter permissions and audit
+/// history."
+enum NoteSensitivity {
+  ROUTINE
+  SENSITIVE
+  SAFEGUARDING
+}
+
+enum NoteKind {
+  OBSERVATION
+  INTERVENTION
+  ASSESSMENT_JUDGMENT
+  PARENT_COMMUNICATION
+  ADMINISTRATIVE
+}
+
+enum ReportFormat {
+  CSV
+  JSON
+  XLSX
+  PDF
+}
+
+enum ReportExportStatus {
+  QUEUED
+  RUNNING
+  READY
+  FAILED
+  EXPIRED
+}
+
+/// Blueprint 13 "Support model — support categories".
+enum SupportCategory {
+  ACCESS_ACCOUNT
+  USABILITY
+  CONTENT_ERROR
+  CONFIGURATION_REQUEST
+  DATA_REPORTING
+  PLATFORM_DEFECT
+  SECURITY_PRIVACY
+  COMMERCIAL_SUBSCRIPTION
+}
+
+enum SupportPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SupportStatus {
+  NEW
+  TRIAGED
+  IN_PROGRESS
+  WAITING_ON_CUSTOMER
+  ESCALATED
+  RESOLVED
+  CLOSED
+}
+
+enum MediaKind {
+  IMAGE
+  AUDIO
+  VIDEO
+  DOCUMENT
+  ANIMATION
+  ARCHIVE
+}
+
+/// Blueprint 05 safety controls — the outcome of a moderation review.
+enum ModerationDecision {
+  PENDING
+  APPROVED
+  REJECTED
+  ESCALATED
+  REMOVED
+}
+
+enum ContentReportReason {
+  FACTUAL_ERROR
+  INAPPROPRIATE_CONTENT
+  BROKEN_ACTIVITY
+  WRONG_ANSWER_KEY
+  AGE_UNSUITABLE
+  COPYRIGHT_CONCERN
+  OTHER
+}

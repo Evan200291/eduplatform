@@ -1,0 +1,72 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Support
+// Blueprint 13 "Support model": every request has a category, a priority, an
+// owner, a response target and a resolution note. Nothing is closed silently.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SupportRequest {
+  id       String  @id @default(cuid())
+  schoolId String?
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  /// Short human reference shown to the requester, e.g. "MID-1042".
+  reference String @unique @db.VarChar(24)
+
+  requesterId String
+  requester   User    @relation("SupportRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  assigneeId  String?
+  assignee    User?   @relation("SupportAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  category SupportCategory
+  priority SupportPriority @default(NORMAL)
+  status   SupportStatus   @default(NEW)
+
+  subject     String  @db.VarChar(200)
+  description String  @db.Text
+  /// Where the requester was when it happened, to speed up reproduction.
+  contextPath String? @db.VarChar(300)
+  contextData Json?
+
+  /// Blueprint 13 response targets, stored so breaches are measurable.
+  firstResponseDueAt DateTime?
+  resolutionDueAt    DateTime?
+  firstRespondedAt   DateTime?
+  resolvedAt         DateTime?
+  closedAt           DateTime?
+  resolutionNote     String?   @db.Text
+  /// Set when the issue turned out to be a platform defect.
+  defectReference    String?   @db.VarChar(80)
+  escalatedAt        DateTime?
+  escalatedToId      String?   @db.VarChar(32)
+  satisfactionScore  Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages SupportMessage[]
+
+  @@index([schoolId, status])
+  @@index([assigneeId, status])
+  @@index([requesterId, createdAt])
+  @@map("support_requests")
+}
+
+model SupportMessage {
+  id        String         @id @default(cuid())
+  requestId String
+  request   SupportRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  body        String  @db.Text
+  /// Internal notes are never shown to the requester.
+  isInternal  Boolean @default(false)
+  /// Storage keys of any attached files, as a JSON array.
+  attachments Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([requestId, createdAt])
+  @@map("support_messages")
+}

@@ -1,0 +1,92 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Content — questions, answer options and hints
+// Blueprint 03 "Supported initial forms" and blueprint 12 evidence capture.
+// Answer keys live here; the API never sends `isCorrect` or `correct*` values to
+// a student client — marking happens server-side (see src/modules/assessment).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Question {
+  id         String   @id @default(cuid())
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  objectiveId String?
+  objective   LearningObjective? @relation(fields: [objectiveId], references: [id], onDelete: SetNull)
+
+  type        QuestionType
+  prompt      String       @db.Text
+  /// Shown after answering. Blueprint 03: feedback explains, it does not shame.
+  explanation String?      @db.Text
+  /// Extra structure for MATCHING (pairs) and SORTING (ordered items/buckets).
+  config      Json?
+
+  promptMediaId String?
+  promptMedia   MediaAsset? @relation("QuestionPromptMedia", fields: [promptMediaId], references: [id], onDelete: SetNull)
+
+  difficultyBand   DifficultyBand @default(DEVELOPING)
+  pointsValue      Int            @default(1)
+  sortOrder        Int            @default(0)
+  /// Seconds. Null means untimed.
+  timeLimitSeconds Int?
+
+  // ── Answer key (type-dependent; only the relevant column is populated) ─────
+  correctNumeric   Decimal? @db.Decimal(18, 6)
+  /// Absolute tolerance applied to `correctNumeric`.
+  numericTolerance Decimal? @db.Decimal(18, 6)
+  correctBoolean   Boolean?
+  /// Accepted strings for SHORT_TEXT, as a JSON array. Compared case-insensitively.
+  correctText      Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  options   AnswerOption[]
+  hints     Hint[]
+  responses StudentResponse[]
+
+  @@index([activityId, sortOrder])
+  @@index([objectiveId])
+  @@map("questions")
+}
+
+model AnswerOption {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  label     String  @db.VarChar(600)
+  isCorrect Boolean @default(false)
+  sortOrder Int     @default(0)
+  /// Blueprint 03: distractor-specific feedback turns a wrong answer into teaching.
+  feedback  String? @db.VarChar(600)
+  /// Matching/sorting grouping key.
+  matchKey  String? @db.VarChar(120)
+
+  mediaId String?
+  media   MediaAsset? @relation("AnswerOptionMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([questionId, sortOrder])
+  @@map("answer_options")
+}
+
+/// Blueprint 03: scaffolding is available before the student is stuck, and using
+/// it is recorded rather than punished.
+model Hint {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  body       String @db.Text
+  sortOrder  Int    @default(0)
+  /// Optional points reduction when revealed. Default 0 — hints are free.
+  pointsCost Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([questionId, sortOrder])
+  @@map("hints")
+}

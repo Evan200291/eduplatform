@@ -1,0 +1,149 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Tenancy — Organization and School
+// Blueprint 02: Platform → Organization → School → Grade → Class → User
+// Blueprint 12: "Every tenant-owned record has an explicit tenant or school
+// relationship." Aggregate roots carry `schoolId`; pure child rows (answer
+// options, hints, assessment items, path items, student responses) inherit
+// tenancy from their parent to keep the relation graph maintainable.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Organization {
+  id            String       @id @default(cuid())
+  name          String       @db.VarChar(180)
+  slug          String       @unique @db.VarChar(80)
+  status        TenantStatus @default(PROSPECT)
+  contactName   String?      @db.VarChar(140)
+  contactEmail  String?      @db.VarChar(190)
+  contactPhone  String?      @db.VarChar(40)
+  /// ISO 3166-1 alpha-2. Drives the jurisdiction questions in blueprint 10.
+  country       String?      @db.VarChar(2)
+  timezone      String       @default("UTC") @db.VarChar(64)
+  locale        String       @default("en") @db.VarChar(16)
+  internalNotes String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  suspendedAt   DateTime?
+  archivedAt    DateTime?
+  createdById   String?      @db.VarChar(32)
+
+  schools       School[]
+  subscriptions Subscription[]
+  entitlements  FeatureEntitlement[]
+  users         User[]
+  auditLogs     AuditLog[]
+
+  @@index([status])
+  @@map("organizations")
+}
+
+model School {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  name   String       @db.VarChar(180)
+  /// URL-safe identifier used for the tenant-aware login screen.
+  slug   String       @unique @db.VarChar(80)
+  /// Short human-readable school identifier used on student codes and exports.
+  code   String       @unique @db.VarChar(24)
+  status TenantStatus @default(PROSPECT)
+
+  contactName  String? @db.VarChar(140)
+  contactEmail String? @db.VarChar(190)
+  contactPhone String? @db.VarChar(40)
+  addressLine  String? @db.VarChar(240)
+  city         String? @db.VarChar(120)
+  country      String? @db.VarChar(2)
+  timezone     String  @default("UTC") @db.VarChar(64)
+  locale       String  @default("en") @db.VarChar(16)
+
+  /// Default presentation maturity for this school. Blueprint 07 age-based evolution.
+  defaultAgeMode AgeMode @default(PRIMARY)
+
+  // ── Blueprint 05 "Branding and theme configuration — Initial controls" ─────
+  logoMediaId    String?
+  logoMedia      MediaAsset? @relation("SchoolLogo", fields: [logoMediaId], references: [id], onDelete: SetNull)
+  primaryColor   String      @default("#4F46E5") @db.VarChar(9)
+  secondaryColor String      @default("#0EA5E9") @db.VarChar(9)
+  accentColor    String      @default("#F59E0B") @db.VarChar(9)
+  welcomeMessage String?     @db.VarChar(500)
+
+  activeThemeId String? @unique
+  activeTheme   Theme?  @relation("SchoolActiveTheme", fields: [activeThemeId], references: [id], onDelete: SetNull)
+
+  onboardingStage String?   @db.VarChar(60)
+  launchedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  suspendedAt     DateTime?
+  archivedAt      DateTime?
+  createdById     String?   @db.VarChar(32)
+
+  // ── Configuration and commerce ────────────────────────────────────────────
+  settings      SchoolSettings?
+  subscriptions Subscription[]
+  entitlements  FeatureEntitlement[]
+  themes        Theme[]              @relation("SchoolThemes")
+
+  // ── Identity ──────────────────────────────────────────────────────────────
+  users           User[]
+  roleAssignments UserRoleAssignment[]
+  invitations     Invitation[]
+
+  // ── Academic structure ────────────────────────────────────────────────────
+  grades             Grade[]
+  classes            Class[]
+  academicTerms      AcademicTerm[]
+  subjects           Subject[]
+  curriculumPrograms CurriculumProgram[]
+  units              Unit[]
+  topics             Topic[]
+  learningObjectives LearningObjective[]
+
+  // ── Content ───────────────────────────────────────────────────────────────
+  lessons          Lesson[]
+  activities       Activity[]
+  mediaAssets      MediaAsset[]             @relation("SchoolMediaAssets")
+  ownershipRecords ContentOwnershipRecord[]
+  publications     ContentPublication[]
+  contentReports   ContentReport[]
+
+  // ── Assessment and learning ───────────────────────────────────────────────
+  assessments        Assessment[]
+  assessmentAttempts AssessmentAttempt[]
+  topicEvaluations   TopicEvaluation[]
+  recommendations    Recommendation[]
+  learningPaths      LearningPath[]
+  progressRecords    ProgressRecord[]
+  masteryRecords     MasteryRecord[]
+  teacherAssessments TeacherAssessment[]
+  teacherNotes       TeacherNote[]
+
+  // ── Assignments and engagement ────────────────────────────────────────────
+  assignments        Assignment[]
+  assignmentAttempts AssignmentAttempt[]
+  missions           Mission[]
+  missionProgress    MissionProgress[]
+  pointsLedger       PointsLedger[]
+  badges             Badge[]
+  studentBadges      StudentBadge[]
+  streaks            Streak[]
+  companions         Companion[]
+  rewards            Reward[]
+  studentRewards     StudentReward[]
+  leaderboards       LeaderboardConfiguration[]
+  leaderboardEntries LeaderboardEntry[]
+
+  // ── Communication and operations ──────────────────────────────────────────
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  reportDefinitions       ReportDefinition[]
+  reportExports           ReportExport[]
+  supportRequests         SupportRequest[]
+  auditLogs               AuditLog[]
+  dataRequests            DataRequest[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("schools")
+}

@@ -1,0 +1,70 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Companion
+// Blueprint 03: "The companion grows through learning." Stages only move
+// forward. There is no death and no severe decay unless a school explicitly
+// opts in (`SchoolSettings.companionDecayEnabled`), and even then decay affects
+// mood, not stage.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Companion {
+  id        String @id @default(cuid())
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId String @unique
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  /// Chosen creature family, e.g. "ember-fox". Purely cosmetic.
+  speciesKey String @db.VarChar(60)
+  name       String @db.VarChar(60)
+
+  stage        CompanionStage @default(EGG)
+  mood         CompanionMood  @default(CALM)
+  /// Total growth points earned. Stage thresholds are configuration, not data.
+  growthPoints Int            @default(0)
+  level        Int            @default(1)
+
+  /// Cosmetic state: colour variant, equipped accessories, background.
+  appearance  Json?
+  accessories Json?
+
+  hatchedAt         DateTime?
+  lastInteractionAt DateTime  @default(now())
+  lastStageChangeAt DateTime?
+  /// Consecutive days the learner has interacted. Never used to shame.
+  careStreak        Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events CompanionEvent[]
+
+  @@index([schoolId])
+  @@map("companions")
+}
+
+/// The companion's history, so a milestone can be replayed and celebrated and so
+/// growth is explainable ("you earned this by finishing three lessons").
+model CompanionEvent {
+  id          String    @id @default(cuid())
+  companionId String
+  companion   Companion @relation(fields: [companionId], references: [id], onDelete: Cascade)
+
+  /// GROWTH | STAGE_CHANGE | MOOD_CHANGE | ACCESSORY_UNLOCK | INTERACTION | MILESTONE.
+  kind        String @db.VarChar(40)
+  description String @db.VarChar(400)
+  growthDelta Int    @default(0)
+
+  stageBefore CompanionStage?
+  stageAfter  CompanionStage?
+  moodBefore  CompanionMood?
+  moodAfter   CompanionMood?
+
+  sourceType String? @db.VarChar(40)
+  sourceId   String? @db.VarChar(32)
+
+  occurredAt DateTime  @default(now())
+  seenAt     DateTime?
+
+  @@index([companionId, occurredAt])
+  @@map("companion_events")
+}

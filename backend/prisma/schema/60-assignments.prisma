@@ -1,0 +1,127 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Assignments and homework
+// Blueprint 03: "A teacher can assign to an individual, group, class, grade, or
+// subject cohort." Blueprint 04: monitor started, completed, overdue, excused.
+// Targets are stored as (type, id) pairs rather than as separate columns so a
+// new target type does not require a migration.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Assignment {
+  id       String @id @default(cuid())
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User   @relation("AssignmentCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+
+  classId   String?
+  class     Class?        @relation(fields: [classId], references: [id], onDelete: SetNull)
+  subjectId String?
+  subject   Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  termId    String?
+  term      AcademicTerm? @relation(fields: [termId], references: [id], onDelete: SetNull)
+
+  kind         AssignmentKind @default(HOMEWORK)
+  title        String         @db.VarChar(200)
+  instructions String?        @db.Text
+
+  // ── What is being set (any combination; at least one is required) ──────────
+  topicId      String?
+  topic        Topic?      @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  lessonId     String?
+  lesson       Lesson?     @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  activityId   String?
+  activity     Activity?   @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  assessmentId String?
+  assessment   Assessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+
+  availableFrom     DateTime     @default(now())
+  dueAt             DateTime?
+  lateBehavior      LateBehavior @default(ALLOW_LATE_FLAGGED)
+  graceHours        Int          @default(24)
+  allowResubmission Boolean      @default(true)
+  maxAttempts       Int?
+  pointsValue       Int          @default(0)
+  estimatedMinutes  Int?
+
+  isPublished     Boolean   @default(false)
+  publishedAt     DateTime?
+  /// Blueprint 06: notifications have a purpose and are configurable.
+  notifyOnAssign  Boolean   @default(true)
+  notifyOnDueSoon Boolean   @default(true)
+  notifyOnOverdue Boolean   @default(true)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  targets  AssignmentTarget[]
+  attempts AssignmentAttempt[]
+
+  @@index([schoolId, isPublished, dueAt])
+  @@index([classId, dueAt])
+  @@index([createdById])
+  @@map("assignments")
+}
+
+model AssignmentTarget {
+  id           String     @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  targetType  AssignmentTargetType
+  /// Id of the student, user group, class, grade or subject being targeted.
+  targetId    String               @db.VarChar(32)
+  /// Denormalized display label so a deleted target still reads sensibly.
+  targetLabel String?              @db.VarChar(180)
+
+  createdAt DateTime @default(now())
+
+  @@unique([assignmentId, targetType, targetId], map: "assignment_target_unique")
+  @@index([targetType, targetId])
+  @@map("assignment_targets")
+}
+
+/// One student's engagement with one assignment. Created lazily when the student
+/// first opens it, or eagerly by the teacher's "set" action for monitoring.
+model AssignmentAttempt {
+  id           String     @id @default(cuid())
+  schoolId     String
+  school       School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  state         AssignmentState @default(NOT_STARTED)
+  attemptNumber Int             @default(1)
+
+  startedAt   DateTime?
+  submittedAt DateTime?
+  completedAt DateTime?
+  /// Set by the late-behavior rules at submission time.
+  isLate      Boolean   @default(false)
+
+  scorePercent        Int?
+  pointsAwarded       Int     @default(0)
+  timeSpentSeconds    Int     @default(0)
+  /// Links to the underlying assessment evidence where the assignment set one.
+  assessmentAttemptId String? @db.VarChar(32)
+
+  /// Blueprint 04: excusing is an explicit, reasoned, attributable action.
+  excusedById   String?   @db.VarChar(32)
+  excusedAt     DateTime?
+  excusedReason String?   @db.VarChar(400)
+
+  teacherFeedback String?   @db.Text
+  feedbackById    String?   @db.VarChar(32)
+  feedbackAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assignmentId, studentId, attemptNumber], map: "assignment_attempt_unique")
+  @@index([schoolId, state])
+  @@index([studentId, state])
+  @@map("assignment_attempts")
+}

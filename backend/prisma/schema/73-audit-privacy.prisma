@@ -1,0 +1,142 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Audit, privacy and data rights
+// Blueprint 05: "Every significant action is attributable." Blueprint 10: data
+// subject rights must be actionable, evidenced and time-bound.
+// Append-only privacy tables use plain indexed id columns rather than relations
+// so that archiving a tenant never cascades away the evidence of what happened.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  schoolId       String?
+  school         School?       @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+
+  actorUserId     String?
+  actor           User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  /// Snapshot of who they were acting as, since assignments change over time.
+  actorRole       RoleKey?
+  /// Set when platform staff acted inside a tenant on its behalf.
+  isImpersonation Boolean  @default(false)
+
+  /// Dot-separated action key, e.g. `recommendation.approve`, `user.suspend`.
+  action     String  @db.VarChar(120)
+  targetType String  @db.VarChar(60)
+  targetId   String? @db.VarChar(32)
+  /// Human-readable summary rendered in the admin audit view.
+  summary    String? @db.VarChar(500)
+
+  result AuditResult @default(SUCCESS)
+  /// Why the action was taken, where the UI requires a reason.
+  reason String?     @db.VarChar(500)
+
+  /// Before/after snapshots, redacted of secrets by the audit service.
+  beforeData Json?
+  afterData  Json?
+
+  ipAddress String? @db.VarChar(64)
+  userAgent String? @db.VarChar(400)
+  /// Correlates every log line produced by one HTTP request.
+  requestId String? @db.VarChar(64)
+
+  occurredAt DateTime @default(now())
+
+  @@index([schoolId, occurredAt])
+  @@index([organizationId, occurredAt])
+  @@index([actorUserId, occurredAt])
+  @@index([action, occurredAt])
+  @@index([targetType, targetId])
+  @@map("audit_logs")
+}
+
+/// Blueprint 10: export, deletion and correction requests are tracked to
+/// completion with an owner and a deadline.
+model DataRequest {
+  id       String @id @default(cuid())
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  subjectUserId String
+  subjectUser   User   @relation("DataRequestSubject", fields: [subjectUserId], references: [id], onDelete: Cascade)
+  requestedById String
+  requestedBy   User   @relation("DataRequestRequester", fields: [requestedById], references: [id], onDelete: Cascade)
+
+  kind   DataRequestKind
+  status DataRequestStatus @default(REQUESTED)
+
+  details String?   @db.Text
+  /// Statutory or contractual deadline for completion.
+  dueAt   DateTime?
+
+  /// Who is accountable for delivering it.
+  ownerUserId      String? @db.VarChar(32)
+  /// Storage key of the produced export, where the kind is EXPORT.
+  exportStorageKey String? @db.VarChar(500)
+  /// What was actually done, including anything lawfully retained.
+  outcomeNote      String? @db.Text
+  rejectionReason  String? @db.VarChar(600)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  @@index([schoolId, status])
+  @@index([subjectUserId])
+  @@map("data_requests")
+}
+
+/// Blueprint 10: record the lawful basis relied on for each processing purpose,
+/// per school, with the evidence of who confirmed it and when.
+model ConsentRecord {
+  id       String  @id @default(cuid())
+  schoolId String  @db.VarChar(32)
+  /// Null when the basis is recorded at school level rather than per learner.
+  userId   String? @db.VarChar(32)
+
+  /// e.g. `learning_analytics`, `marketing_communication`, `media_publication`.
+  purpose     String  @db.VarChar(120)
+  /// CONTRACT | LEGITIMATE_INTEREST | CONSENT | LEGAL_OBLIGATION | PUBLIC_TASK.
+  lawfulBasis String  @db.VarChar(40)
+  granted     Boolean
+
+  /// Who confirmed it — usually a school admin acting for the school.
+  confirmedById String? @db.VarChar(32)
+  evidenceNote  String? @db.VarChar(600)
+  policyVersion String? @db.VarChar(40)
+
+  effectiveFrom DateTime  @default(now())
+  withdrawnAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([schoolId, purpose])
+  @@index([userId])
+  @@map("consent_records")
+}
+
+/// Blueprint 10 retention: what gets purged, on what clock, and what ran last.
+model RetentionPolicy {
+  id       String  @id @default(cuid())
+  /// Null for the platform default policy.
+  schoolId String? @db.VarChar(32)
+
+  /// Logical data class, e.g. `student_responses`, `audit_logs`, `report_exports`.
+  dataClass    String  @db.VarChar(80)
+  retainMonths Int
+  /// ANONYMIZE | DELETE | ARCHIVE.
+  action       String  @db.VarChar(20)
+  isActive     Boolean @default(true)
+  notes        String? @db.VarChar(600)
+
+  lastRunAt       DateTime?
+  lastRunRowCount Int?
+  nextRunAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, dataClass])
+  @@map("retention_policies")
+}

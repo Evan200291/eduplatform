@@ -1,0 +1,86 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Missions and challenges
+// Blueprint 03: missions give short-term purpose ("practise subtraction three
+// times this week") and are always framed as achievable, never as a penalty for
+// falling behind.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Mission {
+  id       String @id @default(cuid())
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  classId String?
+  class   Class?  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  topicId String?
+  topic   Topic?  @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  title       String   @db.VarChar(180)
+  key         String   @db.VarChar(80)
+  description String   @db.VarChar(600)
+  ageMode     AgeMode?
+
+  /// What is counted: ACTIVITIES_COMPLETED | MINUTES_LEARNED | TOPICS_MASTERED |
+  /// ASSIGNMENTS_ON_TIME | ACCURACY_PERCENT | STREAK_DAYS.
+  goalType   String @db.VarChar(40)
+  goalTarget Int
+
+  pointsReward  Int     @default(0)
+  rewardBadgeId String?
+  rewardBadge   Badge?  @relation("MissionRewardBadge", fields: [rewardBadgeId], references: [id], onDelete: SetNull)
+
+  startsAt       DateTime  @default(now())
+  endsAt         DateTime?
+  /// Recurring missions regenerate progress rows each period.
+  isRecurring    Boolean   @default(false)
+  recurrenceDays Int?
+  isActive       Boolean   @default(true)
+  /// Assign to everyone in scope automatically rather than by opt-in.
+  autoEnrol      Boolean   @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime?
+  createdById String?   @db.VarChar(32)
+
+  progress MissionProgress[]
+
+  @@unique([schoolId, key])
+  @@index([schoolId, isActive])
+  @@index([classId])
+  @@map("missions")
+}
+
+model MissionProgress {
+  id        String  @id @default(cuid())
+  schoolId  String
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  missionId String
+  mission   Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  status        MissionStatus @default(NOT_STARTED)
+  progressValue Int           @default(0)
+  /// Snapshot of the target at enrolment so later edits do not move the goalposts.
+  goalTarget    Int
+  /// Period bounds for recurring missions.
+  periodStart   DateTime?
+  periodEnd     DateTime?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  expiresAt   DateTime?
+
+  pointsAwarded Int       @default(0)
+  badgeAwarded  Boolean   @default(false)
+  seenAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([missionId, studentId, periodStart], map: "mission_progress_period_unique")
+  @@index([schoolId, status])
+  @@index([studentId, status])
+  @@map("mission_progress")
+}

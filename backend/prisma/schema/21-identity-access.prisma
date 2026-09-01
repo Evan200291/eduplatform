@@ -1,0 +1,142 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Access — role assignments, sessions, invitations and user groups
+// Blueprint 05: "Every role is scoped. A teacher sees their classes, a school
+// admin sees their school, platform staff see the platform."
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A single grant of one role inside one scope. A user may hold several.
+model UserRoleAssignment {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  roleKey   RoleKey
+  scopeType RoleScopeType
+
+  /// Set for ORGANIZATION scope and above-school reporting roles.
+  organizationId String?  @db.VarChar(32)
+  schoolId       String?
+  school         School?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  gradeId        String?
+  grade          Grade?   @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  classId        String?
+  class          Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectId      String?
+  subject        Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  grantedAt   DateTime  @default(now())
+  grantedById String?   @db.VarChar(32)
+  /// Blueprint 05: temporary elevated access must expire.
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  revokedById String?   @db.VarChar(32)
+  reason      String?   @db.VarChar(300)
+
+  /// Deterministic join of the scope ids (`school:grade:class:subject`), written
+  /// by the service layer. It exists because a unique index over five
+  /// VARCHAR(191) id columns exceeds InnoDB's 3072-byte key limit under utf8mb4.
+  scopeKey String @default("") @db.VarChar(140)
+
+  @@unique([userId, roleKey, scopeType, scopeKey], name: "userRoleScope", map: "user_role_scope_unique")
+  @@index([schoolId, roleKey])
+  @@index([userId])
+  @@map("user_role_assignments")
+}
+
+/// Refresh-token session. Access tokens are short-lived and stateless; refresh
+/// tokens are stored hashed here so they can be rotated and revoked.
+model Session {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  refreshTokenHash     String      @unique @db.VarChar(255)
+  loginMethod          LoginMethod
+  /// The tenant the session is acting inside. Blueprint 06 "active tenant context".
+  activeSchoolId       String?     @db.VarChar(32)
+  activeOrganizationId String?     @db.VarChar(32)
+
+  userAgent String? @db.VarChar(400)
+  ipAddress String? @db.VarChar(64)
+
+  createdAt           DateTime  @default(now())
+  lastUsedAt          DateTime  @default(now())
+  expiresAt           DateTime
+  revokedAt           DateTime?
+  /// Set when this token was rotated, pointing at its successor.
+  replacedBySessionId String?   @db.VarChar(32)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Blueprint 05: staff join by invitation, never by self-registration.
+model Invitation {
+  id             String  @id @default(cuid())
+  schoolId       String?
+  school         School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  /// Set when the invitation is for organization-level or platform-level staff.
+  organizationId String? @db.VarChar(32)
+
+  email     String           @db.VarChar(190)
+  roleKey   RoleKey
+  scopeType RoleScopeType    @default(SCHOOL)
+  status    InvitationStatus @default(PENDING)
+  tokenHash String           @unique @db.VarChar(255)
+  message   String?          @db.VarChar(500)
+
+  invitedById  String?
+  invitedBy    User?   @relation("InvitationInvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+  acceptedById String? @unique
+  acceptedBy   User?   @relation("InvitationAcceptedBy", fields: [acceptedById], references: [id], onDelete: SetNull)
+
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  acceptedAt DateTime?
+  revokedAt  DateTime?
+
+  @@index([schoolId, status])
+  @@index([email])
+  @@map("invitations")
+}
+
+/// Blueprint 06: a feature may be enabled for an arbitrary "user group" — a
+/// pilot cohort, an intervention set, a staff working group.
+model UserGroup {
+  id       String @id @default(cuid())
+  schoolId String @db.VarChar(32)
+
+  name        String  @db.VarChar(140)
+  key         String  @db.VarChar(80)
+  description String? @db.VarChar(500)
+  /// Groups created by the system (e.g. "pilot cohort") are not user-editable.
+  isSystem    Boolean @default(false)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime?
+  createdById String?   @db.VarChar(32)
+
+  members      UserGroupMember[]
+  entitlements FeatureEntitlement[]
+
+  @@unique([schoolId, key])
+  @@index([schoolId])
+  @@map("user_groups")
+}
+
+model UserGroupMember {
+  id      String    @id @default(cuid())
+  groupId String
+  group   UserGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  addedAt   DateTime @default(now())
+  addedById String?  @db.VarChar(32)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("user_group_members")
+}

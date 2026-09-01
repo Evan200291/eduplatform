@@ -1,0 +1,153 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Progress and mastery
+// Blueprint 12: progress ("did the learner do it?") and mastery ("can the
+// learner do it?") are separate records. Reports must state which one they are
+// showing, and every mastery row carries an `EvidenceSource`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Activity-level engagement. This is product activity, never mastery.
+model ProgressRecord {
+  id        String @id @default(cuid())
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  topicId    String?
+  topic      Topic?    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  lessonId   String?
+  lesson     Lesson?   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  activityId String?
+  activity   Activity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  status            PathItemStatus @default(IN_PROGRESS)
+  completionPercent Int            @default(0)
+  attemptCount      Int            @default(0)
+  bestScorePercent  Int?
+  lastScorePercent  Int?
+  timeSpentSeconds  Int            @default(0)
+  hintsUsed         Int            @default(0)
+
+  firstStartedAt DateTime  @default(now())
+  lastActivityAt DateTime  @default(now())
+  completedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, activityId], map: "progress_student_activity_unique")
+  @@index([schoolId, lastActivityAt])
+  @@index([studentId, topicId])
+  @@index([lessonId])
+  @@map("progress_records")
+}
+
+/// The current inferred mastery position. One row per student per target.
+model MasteryRecord {
+  id        String  @id @default(cuid())
+  schoolId  String
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  topicId     String?
+  topic       Topic?             @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  objectiveId String?
+  objective   LearningObjective? @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  level           MasteryLevel       @default(NOT_ASSESSED)
+  band            DifficultyBand     @default(DEVELOPING)
+  scorePercent    Int?
+  /// Blueprint 04: label the origin of the measure, every time.
+  evidenceSource  EvidenceSource
+  confidence      EvidenceConfidence @default(LOW)
+  evidenceCount   Int                @default(0)
+  /// Set when a teacher judgment overrides the system inference.
+  teacherOverride Boolean            @default(false)
+  overrideNote    String?            @db.VarChar(600)
+  overriddenById  String?            @db.VarChar(32)
+
+  firstEvidenceAt DateTime  @default(now())
+  lastEvidenceAt  DateTime  @default(now())
+  masteredAt      DateTime?
+  /// Blueprint 03: mastery can decay if unpractised, prompting reassessment.
+  reviewDueAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, topicId, objectiveId], map: "mastery_student_target_unique")
+  @@index([schoolId, subjectId, level])
+  @@index([studentId, lastEvidenceAt])
+  @@map("mastery_records")
+}
+
+/// Blueprint 04: teacher-provided judgment is first-class evidence, recorded
+/// separately from system inference so a report can show both.
+model TeacherAssessment {
+  id        String @id @default(cuid())
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacherId String
+  teacher   User   @relation("TeacherAssessmentAuthor", fields: [teacherId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User   @relation("TeacherAssessmentStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  topicId   String?
+  topic     Topic?   @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  level            MasteryLevel
+  band             DifficultyBand?
+  comment          String?         @db.Text
+  /// Whether this judgment should feed the mastery record.
+  countsAsEvidence Boolean         @default(true)
+  assessedAt       DateTime        @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId, studentId])
+  @@index([teacherId, assessedAt])
+  @@map("teacher_assessments")
+}
+
+/// Blueprint 04 notes: "Notes have visibility rules" and sensitive notes require
+/// stricter permissions plus an audit history.
+model TeacherNote {
+  id        String @id @default(cuid())
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User   @relation("TeacherNoteAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User   @relation("TeacherNoteStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  kind        NoteKind        @default(OBSERVATION)
+  visibility  NoteVisibility  @default(PRIVATE_TEACHER)
+  sensitivity NoteSensitivity @default(ROUTINE)
+
+  title          String?   @db.VarChar(200)
+  body           String    @db.Text
+  /// Blueprint 04: a note may require follow-up, and follow-up is tracked.
+  followUpDueAt  DateTime?
+  followUpDoneAt DateTime?
+  /// Safeguarding notes are escalated rather than shared.
+  escalatedAt    DateTime?
+  escalatedToId  String?   @db.VarChar(32)
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  /// Notes are never hard-deleted; they are withdrawn with a reason.
+  withdrawnAt    DateTime?
+  withdrawnById  String?   @db.VarChar(32)
+  withdrawReason String?   @db.VarChar(400)
+
+  @@index([schoolId, studentId])
+  @@index([authorId, createdAt])
+  @@index([visibility, sensitivity])
+  @@map("teacher_notes")
+}

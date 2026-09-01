@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "lib": ["ES2022"],
+    "outDir": "dist",
+    // NOTE: `rootDir` lives in tsconfig.build.json, not here. This config also
+    // type-checks `prisma/**` and `tests/**`, which sit outside `src`, and tsc
+    // rejects that combination (TS6059). Emit only ever happens through
+    // tsconfig.build.json, which restricts itself to `src` and sets `rootDir`.
+    "baseUrl": ".",
+    // NOTE: deliberately no `paths` aliases. The compiled output runs under plain
+    // `node dist/server.js` via PM2, and TS path aliases are not rewritten by tsc.
+    // Adding them would require tsconfig-paths/module-alias at runtime. All
+    // internal imports use relative paths so the build is dependency-free.
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "declaration": false,
+    "removeComments": false,
+    "experimentalDecorators": false,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "prisma/**/*.ts", "tests/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

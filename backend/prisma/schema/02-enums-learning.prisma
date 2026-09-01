@@ -1,0 +1,136 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums — curriculum, assessment, learning and engagement
+// Blueprint refs: 03 (Student Platform), 04 (Teacher Portal), 12 (Data Model)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Blueprint 05 content lifecycle: Draft → Review → Approved → Published →
+/// Revised / Archived.
+enum ContentStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+  REVISED
+  ARCHIVED
+}
+
+/// Blueprint 05 "Ownership labels" — recorded for every content record so the
+/// legal position in blueprint 10 can be evidenced.
+enum ContentOwnership {
+  MIDAS_ORIGINAL
+  SCHOOL_OWNED
+  SCHOOL_LICENSED
+  THIRD_PARTY_LICENSED
+  CO_CREATED
+}
+
+/// Blueprint 03 "Lessons and activities — supported initial forms".
+enum ActivityType {
+  EXPLANATION
+  WORKED_EXAMPLE
+  MULTIPLE_CHOICE
+  NUMERIC_RESPONSE
+  TRUE_FALSE
+  MATCHING
+  SORTING
+  PRACTICE_SEQUENCE
+  MINI_GAME
+  QUIZ
+  TEACHER_TASK
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  NUMERIC
+  TRUE_FALSE
+  MATCHING
+  SORTING
+  SHORT_TEXT
+}
+
+/// Blueprint 03: screening assesses "across controlled difficulty bands".
+enum DifficultyBand {
+  FOUNDATION
+  DEVELOPING
+  SECURE
+  CHALLENGE
+  EXTENSION
+}
+
+/// Blueprint 03 "Learning path — Modes".
+enum PathMode {
+  GRADE_BASED
+  SUBJECT_BASED
+  TOPIC_BASED
+  HYBRID
+}
+
+enum PathItemStatus {
+  LOCKED
+  AVAILABLE
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  REMOVED_BY_TEACHER
+}
+
+enum AssessmentKind {
+  SCREENING
+  ONGOING_CHECK
+  TOPIC_CHECK
+  REASSESSMENT
+  TEACHER_ASSIGNED
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  COMPLETED
+  ABANDONED
+  EXPIRED
+}
+
+/// Blueprint 04 recommendation approval workflow: the teacher approves,
+/// modifies, rejects or defers, and the decision is recorded.
+enum RecommendationStatus {
+  PENDING_APPROVAL
+  APPROVED
+  MODIFIED
+  REJECTED
+  DEFERRED
+  AUTO_APPROVED
+  SUPERSEDED
+}
+
+enum RecommendationOrigin {
+  SCREENING_ASSESSMENT
+  ONGOING_EVIDENCE
+  TEACHER_REQUEST
+  REASSESSMENT
+  SCHEDULED_REVIEW
+}
+
+/// Blueprint 12: "Completion alone does not equal mastery."
+enum MasteryLevel {
+  NOT_ASSESSED
+  EMERGING
+  DEVELOPING
+  PROFICIENT
+  MASTERED
+}
+
+/// Blueprint 04: reports must state whether a measure is product activity,
+/// inferred mastery, or teacher-provided judgment.
+enum EvidenceSource {
+  SYSTEM_ASSESSMENT
+  PRACTICE_ACTIVITY
+  ASSIGNMENT_COMPLETION
+  TEACHER_JUDGMENT
+}
+
+enum EvidenceConfidence {
+  INSUFFICIENT
+  LOW
+  MODERATE
+  HIGH
+}

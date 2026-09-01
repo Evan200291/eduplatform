@@ -1,0 +1,16 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Midas Learning Cloud — datasource and client generator
+//
+// The schema is split by bounded context across the files in this folder.
+// Prisma concatenates every `.prisma` file here, so relations may cross files.
+// See ./README.md for the file map and the schema conventions we follow.
+// ─────────────────────────────────────────────────────────────────────────────
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
