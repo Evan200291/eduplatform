@@ -1,17 +1,6 @@
-# Shell scripts must keep LF endings — a CRLF deploy.sh fails on the VPS with
-# "bad interpreter: /usr/bin/env bash^M", which is a confusing way to lose an
-# afternoon. This repo is authored on Windows, so pin it explicitly.
+# Shell scripts must stay LF — a CRLF deploy.sh dies on Linux with
+# "bad interpreter: /usr/bin/env bash^M". Authored on Windows, run on Ubuntu.
 *.sh text eol=lf
 
-# Windows-side helper scripts stay CRLF.
+# Windows-only helper scripts
 *.ps1 text eol=crlf
-
-*.ts   text
-*.tsx  text
-*.js   text
-*.cjs  text
-*.json text
-*.md   text
-*.css  text
-*.html text
-*.prisma text
