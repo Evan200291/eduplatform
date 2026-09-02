@@ -207,7 +207,9 @@ ok "tests passed"
 step "Migrations and demo data"
 npm run db:deploy
 npm run db:seed
-USER_COUNT=$(mysql -u midas -p"$DB_PW" -N -e "SELECT COUNT(*) FROM User;" midas_learning_cloud)
+# Prisma maps model User to table "users" (see @@map in
+# prisma/schema/20-identity.prisma) — query the table name, not the model name.
+USER_COUNT=$(mysql -u midas -p"$DB_PW" -N -e "SELECT COUNT(*) FROM users;" midas_learning_cloud 2>/dev/null || echo 0)
 [ "$USER_COUNT" -gt 0 ] || { echo "Seed produced no user accounts." >&2; exit 1; }
 ok "${USER_COUNT} user accounts"
 
