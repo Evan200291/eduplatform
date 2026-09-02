@@ -33,6 +33,15 @@ npm install
 npm run dev               # :5173, proxies /api to :4000
 ```
 
+## Deploying
+
+See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for first-time VPS setup
+(nginx + PM2 + MySQL + TLS). After that, updates are one command on the server:
+
+```bash
+cd /var/www/midas && ./scripts/deploy.sh
+```
+
 ## Layout
 
 ```
