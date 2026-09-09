@@ -233,6 +233,18 @@ export const qk = {
     targetHistory: (targetType: string, targetId: string) =>
       ['audit', 'target-history', targetType, targetId] as const,
   },
+  platform: {
+    all: ['platform'] as const,
+    overview: ['platform', 'overview'] as const,
+    features: (params?: unknown) => ['platform', 'features', params ?? {}] as const,
+    settings: ['platform', 'settings'] as const,
+    severities: ['platform', 'severities'] as const,
+    incidents: (params?: unknown) => ['platform', 'incidents', params ?? {}] as const,
+    incident: (id: string) => ['platform', 'incident', id] as const,
+    jobHealth: ['platform', 'job-health'] as const,
+    jobRuns: (params?: unknown) => ['platform', 'job-runs', params ?? {}] as const,
+    releases: ['platform', 'releases'] as const,
+  },
   support: {
     all: ['support'] as const,
     list: (params?: unknown) => ['support', 'list', params ?? {}] as const,

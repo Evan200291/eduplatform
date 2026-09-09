@@ -17,6 +17,7 @@ import {
   ModerationPage,
   OrganizationDetailPage,
   OrganizationsPage,
+  PlatformOpsPage,
   RolesPage,
   SchoolDetailPage,
   SchoolsPage,
@@ -141,6 +142,10 @@ export const ADMIN_ROUTES: readonly RouteObject[] = [
                 children: [{ path: 'support', element: <SupportPage /> }],
               },
             ],
+          },
+          {
+            element: <RequirePermission anyOf={['platform.overview.read', 'platform.jobs.read']} />,
+            children: [{ path: 'platform', element: <PlatformOpsPage /> }],
           },
           {
             element: <RequirePermission anyOf={['organization.read']} />,

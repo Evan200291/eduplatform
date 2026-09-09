@@ -60,6 +60,7 @@ export const paths = {
     organizations: '/admin/organizations',
     organizationDetail: (orgId: string) => `/admin/organizations/${encodeURIComponent(orgId)}`,
     schools: '/admin/schools',
+    platformOps: '/admin/platform',
     schoolDetail: (schoolId: string) => `/admin/schools/${encodeURIComponent(schoolId)}`,
     users: '/admin/users',
     userDetail: (userId: string) => `/admin/users/${encodeURIComponent(userId)}`,

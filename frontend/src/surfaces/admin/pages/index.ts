@@ -19,6 +19,7 @@ export { GamificationPage } from './GamificationPage';
 export { ModerationPage } from './ModerationPage';
 export { OrganizationDetailPage } from './OrganizationDetailPage';
 export { OrganizationsPage } from './OrganizationsPage';
+export { PlatformOpsPage } from './PlatformOpsPage';
 export { RolesPage } from './RolesPage';
 export { SchoolDetailPage } from './SchoolDetailPage';
 export { SchoolsPage } from './SchoolsPage';

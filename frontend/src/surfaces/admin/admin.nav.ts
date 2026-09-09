@@ -10,6 +10,7 @@ import {
   IconHome,
   IconModeration,
   IconOrganization,
+  IconPlatform,
   IconRoles,
   IconSafety,
   IconSchool,
@@ -134,6 +135,12 @@ export const ADMIN_NAV: readonly NavSection[] = [
         anyOf: ['organization.read'],
       },
       { to: paths.admin.schools, label: 'Schools', icon: IconSchool, anyOf: ['school.create'] },
+      {
+        to: paths.admin.platformOps,
+        label: 'Operations',
+        icon: IconPlatform,
+        anyOf: ['platform.overview.read', 'platform.jobs.read'],
+      },
     ],
   },
 ];
