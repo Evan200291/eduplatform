@@ -22,7 +22,7 @@ import {
 import { ErrorState, QueryBoundary } from '@/components/feedback';
 import { useCan } from '@/auth';
 import { createAssignment, fetchAssignments, publishAssignment } from '@/assignments/assignments.api';
-import { fetchMyClasses } from '@/academic/academic.api';
+import { fetchClassRoster, fetchMyClasses } from '@/academic/academic.api';
 import type { Assignment } from '@/assignments/assignments.types';
 import { qk } from '@/query/keys';
 import { paths } from '@/routes/paths';
@@ -169,6 +169,8 @@ function CreateAssignmentModal({
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState('HOMEWORK');
   const [classId, setClassId] = useState(classes[0]?.id ?? '');
+  const [audience, setAudience] = useState<'CLASS' | 'STUDENT'>('CLASS');
+  const [studentIds, setStudentIds] = useState<string[]>([]);
   const [workType, setWorkType] = useState('activityId');
   const [workId, setWorkId] = useState('');
   const [dueAt, setDueAt] = useState('');
@@ -182,7 +184,10 @@ function CreateAssignmentModal({
         kind,
         classId,
         pointsValue: Number(pointsValue) || 0,
-        targets: [{ targetType: 'CLASS', targetId: classId }],
+        targets:
+          audience === 'CLASS'
+            ? [{ targetType: 'CLASS', targetId: classId }]
+            : studentIds.map((id) => ({ targetType: 'STUDENT', targetId: id })),
         [workType]: workId.trim(),
       };
       if (dueAt) input.dueAt = new Date(dueAt).toISOString();
@@ -197,7 +202,11 @@ function CreateAssignmentModal({
     },
   });
 
-  const canSubmit = title.trim().length > 1 && classId.length > 0 && workId.trim().length > 0;
+  const canSubmit =
+    title.trim().length > 1 &&
+    classId.length > 0 &&
+    workId.trim().length > 0 &&
+    (audience === 'CLASS' || studentIds.length > 0);
 
   return (
     <Modal
@@ -236,6 +245,17 @@ function CreateAssignmentModal({
           </Field>
         </div>
 
+        <AudiencePicker
+          classId={classId}
+          audience={audience}
+          studentIds={studentIds}
+          onAudienceChange={(next) => {
+            setAudience(next);
+            setStudentIds([]);
+          }}
+          onStudentIdsChange={setStudentIds}
+        />
+
         <div className="grid grid-cols-[auto_1fr] gap-3">
           <Field label="Work item">
             <Select options={WORK_TYPE_OPTIONS} value={workType} onChange={(event) => setWorkType(event.target.value)} />
@@ -267,5 +287,95 @@ function CreateAssignmentModal({
         />
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Who an assignment goes to.
+ *
+ * The server has always accepted five target types — student, group, class,
+ * grade and subject — and this form only ever sent `CLASS`, so setting work for
+ * one learner meant setting it for everybody. The two that matter for the pilot
+ * are the whole class and named individuals; grade and subject targeting exist
+ * on the server and can be surfaced when a school asks for them.
+ *
+ * Picking individuals loads the class roster rather than every learner in the
+ * school, because assigning across classes is not something a teacher's scope
+ * permits anyway — the server would reject it, and offering it would be a
+ * control that fails on use.
+ */
+function AudiencePicker({
+  classId,
+  audience,
+  studentIds,
+  onAudienceChange,
+  onStudentIdsChange,
+}: {
+  classId: string;
+  audience: 'CLASS' | 'STUDENT';
+  studentIds: string[];
+  onAudienceChange: (next: 'CLASS' | 'STUDENT') => void;
+  onStudentIdsChange: (next: string[]) => void;
+}) {
+  const roster = useQuery({
+    queryKey: qk.classes.roster(classId),
+    queryFn: () => fetchClassRoster(classId),
+    enabled: audience === 'STUDENT' && classId.length > 0,
+  });
+
+  const learners = (roster.data ?? []).filter((entry) => entry.isActive);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Field label="Give this to" isRequired>
+        <Select
+          value={audience}
+          onChange={(event) => onAudienceChange(event.target.value as 'CLASS' | 'STUDENT')}
+          options={[
+            { value: 'CLASS', label: 'Everyone in the class' },
+            { value: 'STUDENT', label: 'Chosen learners only' },
+          ]}
+        />
+      </Field>
+
+      {audience === 'STUDENT' ? (
+        <QueryBoundary
+          isLoading={roster.isPending}
+          error={roster.error}
+          onRetry={() => void roster.refetch()}
+        >
+          {learners.length === 0 ? (
+            <EmptyState
+              title="Nobody is enrolled in this class"
+              description="Add learners to the class before setting work for individuals."
+            />
+          ) : (
+            <div className="max-h-52 overflow-y-auto rounded-md border border-border p-3">
+              <div className="flex flex-col gap-2">
+                {learners.map((entry) => (
+                  <Checkbox
+                    key={entry.user.id}
+                    label={entry.user.displayName}
+                    checked={studentIds.includes(entry.user.id)}
+                    onChange={(event) =>
+                      onStudentIdsChange(
+                        event.target.checked
+                          ? [...studentIds, entry.user.id]
+                          : studentIds.filter((id) => id !== entry.user.id),
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-ink-muted">
+            {studentIds.length === 0
+              ? 'Choose at least one learner.'
+              : `${studentIds.length} ${studentIds.length === 1 ? 'learner' : 'learners'} selected.`}
+          </p>
+        </QueryBoundary>
+      ) : null}
+    </div>
   );
 }

@@ -77,12 +77,29 @@ export function giveAttemptFeedback(attemptId: string, feedback: string): Promis
   });
 }
 
-export function excuseAttempt(attemptId: string, reason?: string): Promise<AssignmentAttempt> {
-  return apiPost<AssignmentAttempt>(`/assignments/attempts/${encodeURIComponent(attemptId)}/excuse`, {
-    reason,
-  });
+/**
+ * Excuse and reinstate are per-assignment, not per-attempt.
+ *
+ * Two helpers used to live here posting to `/assignments/attempts/:id/excuse`,
+ * a route that does not exist — the real one is `/assignments/:id/excuse` and
+ * takes the learner ids. Nothing called them (AssignmentDetailPage builds the
+ * correct request itself), so they were removed rather than fixed in place.
+ */
+export function excuseLearners(
+  assignmentId: string,
+  studentIds: string[],
+  reason: string,
+): Promise<unknown> {
+  return apiPost(`/assignments/${encodeURIComponent(assignmentId)}/excuse`, { studentIds, reason });
 }
 
-export function unexcuseAttempt(attemptId: string): Promise<AssignmentAttempt> {
-  return apiPost<AssignmentAttempt>(`/assignments/attempts/${encodeURIComponent(attemptId)}/unexcuse`);
+export function reinstateLearners(
+  assignmentId: string,
+  studentIds: string[],
+  reason: string,
+): Promise<unknown> {
+  return apiPost(`/assignments/${encodeURIComponent(assignmentId)}/unexcuse`, {
+    studentIds,
+    reason,
+  });
 }

@@ -1,9 +1,10 @@
-import { apiGet, apiGetPaged, apiPatch, apiPost } from '@/api';
+import { apiDelete, apiGet, apiGetPaged, apiPatch, apiPost, apiPut } from '@/api';
 import type { Paginated } from '@/api/types';
 import type {
   AcademicTerm,
   ClassListQuery,
   ClassRosterEntry,
+  ClassTeacherEntry,
   EnrolledClass,
   Grade,
   SchoolClass,
@@ -80,4 +81,75 @@ export function removeStudentsFromClass(
   hard = false,
 ): Promise<unknown> {
   return apiPost(`/classes/${encodeURIComponent(classId)}/students/remove`, { userIds, hard });
+}
+
+// ── Editing what was previously create-only ─────────────────────────────────
+
+/**
+ * Grades and subjects could be created and never changed or retired. Both
+ * archive rather than delete: a grade with learning history behind it must stay
+ * referenceable, so `archive` takes a reason and the row survives.
+ */
+
+export function updateGrade(gradeId: string, input: Record<string, unknown>): Promise<Grade> {
+  return apiPatch<Grade>(`/grades/${encodeURIComponent(gradeId)}`, input);
+}
+
+export function archiveGrade(gradeId: string, reason: string): Promise<Grade> {
+  return apiPost<Grade>(`/grades/${encodeURIComponent(gradeId)}/archive`, { reason });
+}
+
+export function updateSubject(subjectId: string, input: Record<string, unknown>): Promise<Subject> {
+  return apiPatch<Subject>(`/subjects/${encodeURIComponent(subjectId)}`, input);
+}
+
+export function archiveSubject(subjectId: string, reason: string): Promise<Subject> {
+  return apiPost<Subject>(`/subjects/${encodeURIComponent(subjectId)}/archive`, { reason });
+}
+
+export function updateTerm(termId: string, input: Record<string, unknown>): Promise<AcademicTerm> {
+  return apiPatch<AcademicTerm>(`/terms/${encodeURIComponent(termId)}`, input);
+}
+
+export function archiveClass(classId: string, reason: string): Promise<SchoolClass> {
+  return apiPost<SchoolClass>(`/classes/${encodeURIComponent(classId)}/archive`, { reason });
+}
+
+// ── Staffing a class ────────────────────────────────────────────────────────
+
+/**
+ * Who teaches this class, and which subjects it covers.
+ *
+ * Both were unreachable, which meant a class could be created and never
+ * staffed — the teacher portal's whole scope model rests on `ClassTeacher`
+ * rows, so a class with none is invisible to the people meant to teach it.
+ */
+
+export function fetchClassTeachers(classId: string): Promise<ClassTeacherEntry[]> {
+  return apiGet<ClassTeacherEntry[]>(`/classes/${encodeURIComponent(classId)}/teachers`);
+}
+
+export function assignClassTeacher(
+  classId: string,
+  input: { userId: string; subjectId?: string; isLead?: boolean },
+): Promise<ClassTeacherEntry> {
+  return apiPost<ClassTeacherEntry>(`/classes/${encodeURIComponent(classId)}/teachers`, input);
+}
+
+export function removeClassTeacher(classId: string, teacherId: string): Promise<void> {
+  return apiDelete(
+    `/classes/${encodeURIComponent(classId)}/teachers/${encodeURIComponent(teacherId)}`,
+  );
+}
+
+/** Replaces the whole subject list for a class — send every subject, not a delta. */
+export function setClassSubjects(classId: string, subjectIds: string[]): Promise<unknown> {
+  return apiPut(`/classes/${encodeURIComponent(classId)}/subjects`, { subjectIds });
+}
+
+export function updateClassSubject(
+  classId: string,
+  input: { subjectId: string; weeklyMinutes?: number },
+): Promise<unknown> {
+  return apiPatch(`/classes/${encodeURIComponent(classId)}/subjects`, input);
 }

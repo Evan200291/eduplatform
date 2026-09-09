@@ -74,3 +74,19 @@ export interface ClassListQuery extends ListQuery {
   gradeId?: string;
   termId?: string;
 }
+
+/** A teacher assigned to a class, optionally for one subject. Mirrors `listClassTeachers`. */
+export interface ClassTeacherEntry {
+  id: string;
+  isLead: boolean;
+  assignedAt: string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    displayName: string;
+    email: string | null;
+    primaryRole: string;
+  };
+  subject: { id: string; name: string; key: string } | null;
+}
