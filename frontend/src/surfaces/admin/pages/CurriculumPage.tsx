@@ -42,6 +42,8 @@ import {
 } from '@/content/content.api';
 import type { ContentStatus } from '@/content/content.types';
 import { CONTENT_STATUS_MOVE_LABEL, CONTENT_STATUS_TONE, nextContentStatuses } from '@/content/content-lifecycle';
+import { LessonSectionsEditor } from './LessonSectionsEditor';
+import { QuestionsEditor } from './QuestionsEditor';
 
 const STATUS_TONE = CONTENT_STATUS_TONE;
 
@@ -458,6 +460,7 @@ function LessonsCard({
 }) {
   const queryClient = useQueryClient();
   const [isOpen, setOpen] = useState(false);
+  const [sectionsFor, setSectionsFor] = useState<{ id: string; title: string } | null>(null);
   const query = useQuery({ queryKey: qk.lessons.list(), queryFn: () => fetchLessons({ pageSize: 20 }) });
 
   const create = useMutation({
@@ -491,6 +494,13 @@ function LessonsCard({
             {query.data?.items.map((lesson) => (
               <li key={lesson.id} className="flex items-center justify-between gap-2">
                 <span className="min-w-0 truncate text-ink">{lesson.title}</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSectionsFor({ id: lesson.id, title: lesson.title })}
+                >
+                  Sections
+                </Button>
                 <LifecycleControl
                   status={lesson.status}
                   canWrite={canWrite}
@@ -503,6 +513,14 @@ function LessonsCard({
           </ul>
         )}
       </QueryBoundary>
+      {sectionsFor ? (
+        <LessonSectionsEditor
+          lessonId={sectionsFor.id}
+          lessonTitle={sectionsFor.title}
+          canWrite={canWrite}
+          onClose={() => setSectionsFor(null)}
+        />
+      ) : null}
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add a lesson">
           <ParentedCreateForm
@@ -528,6 +546,7 @@ function ActivitiesCard({
 }) {
   const queryClient = useQueryClient();
   const [isOpen, setOpen] = useState(false);
+  const [questionsFor, setQuestionsFor] = useState<{ id: string; title: string } | null>(null);
   const query = useQuery({ queryKey: qk.activities.list(), queryFn: () => fetchActivities({ pageSize: 20 }) });
 
   const create = useMutation({
@@ -568,6 +587,13 @@ function ActivitiesCard({
             {query.data?.items.map((activity) => (
               <li key={activity.id} className="flex items-center justify-between gap-2">
                 <span className="min-w-0 truncate text-ink">{activity.title}</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setQuestionsFor({ id: activity.id, title: activity.title })}
+                >
+                  Questions
+                </Button>
                 <LifecycleControl
                   status={activity.status}
                   canWrite={canWrite}
@@ -580,6 +606,14 @@ function ActivitiesCard({
           </ul>
         )}
       </QueryBoundary>
+      {questionsFor ? (
+        <QuestionsEditor
+          activityId={questionsFor.id}
+          activityTitle={questionsFor.title}
+          canWrite={canWrite}
+          onClose={() => setQuestionsFor(null)}
+        />
+      ) : null}
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add an activity">
           <ParentedCreateForm

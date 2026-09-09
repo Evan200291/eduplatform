@@ -14,6 +14,7 @@ import {
   CurriculumPage,
   FeaturesPage,
   GamificationPage,
+  ModerationPage,
   OrganizationDetailPage,
   OrganizationsPage,
   RolesPage,
@@ -129,6 +130,10 @@ export const ADMIN_ROUTES: readonly RouteObject[] = [
               {
                 element: <RequirePermission anyOf={['audit.read.school', 'audit.read.platform']} />,
                 children: [{ path: 'audit', element: <AuditPage /> }],
+              },
+              {
+                element: <RequirePermission anyOf={['content.report.review']} />,
+                children: [{ path: 'moderation', element: <ModerationPage /> }],
               },
             ],
           },

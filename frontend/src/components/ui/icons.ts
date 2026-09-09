@@ -73,6 +73,7 @@ export {
   LifeBuoy as IconSupport,
   ToggleRight as IconFeatures,
   ScrollText as IconAudit,
+  Flag as IconModeration,
 
   // Accessibility and preferences
   Accessibility as IconAccessibility,

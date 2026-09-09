@@ -66,6 +66,7 @@ export const paths = {
     roles: '/admin/roles',
     academic: '/admin/academic',
     curriculum: '/admin/curriculum',
+    moderation: '/admin/moderation',
     assessment: '/admin/assessment',
     gamification: '/admin/gamification',
     branding: '/admin/branding',

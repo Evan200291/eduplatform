@@ -177,3 +177,176 @@ export interface ActivityStaffDetail extends ActivitySummary {
     options: (QuestionOption & { isCorrect?: boolean })[];
   })[];
 }
+
+// ── Governance: content reports and moderation (blueprint §05 safety) ────────
+
+/** Mirrors `ModerationDecision` in `04-enums-operations.prisma`. */
+export type ModerationDecision = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ESCALATED' | 'REMOVED';
+
+/** Mirrors `ContentReportReason`. */
+export type ContentReportReason =
+  | 'FACTUAL_ERROR'
+  | 'INAPPROPRIATE_CONTENT'
+  | 'BROKEN_ACTIVITY'
+  | 'WRONG_ANSWER_KEY'
+  | 'AGE_UNSUITABLE'
+  | 'COPYRIGHT_CONCERN'
+  | 'OTHER';
+
+/** Mirrors `CONTENT_TARGET_TYPES` in `content.validation.ts`. */
+export type ContentTargetType =
+  | 'CURRICULUM_PROGRAM'
+  | 'UNIT'
+  | 'TOPIC'
+  | 'LESSON'
+  | 'ACTIVITY'
+  | 'MEDIA';
+
+export interface ContentReportRow {
+  id: string;
+  schoolId: string;
+  reporterId: string;
+  reporter: { id: string; displayName: string; primaryRole: string } | null;
+  lessonId: string | null;
+  lesson: { id: string; title: string } | null;
+  activityId: string | null;
+  activity: { id: string; title: string; type: ActivityType } | null;
+  targetType: string | null;
+  targetId: string | null;
+  reason: ContentReportReason;
+  details: string | null;
+  decision: ModerationDecision;
+  resolutionNotes: string | null;
+  resolvedById: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { reviews: number };
+}
+
+export interface ModerationReviewRow {
+  id: string;
+  reportId: string | null;
+  targetType: ContentTargetType;
+  targetId: string;
+  reviewerId: string | null;
+  reviewer: { id: string; displayName: string } | null;
+  decision: ModerationDecision;
+  notes: string | null;
+  escalatedToId: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
+export interface ContentReportListQuery extends ListQuery {
+  decision?: ModerationDecision;
+  reason?: ContentReportReason;
+  lessonId?: string;
+  activityId?: string;
+  /** A reviewer narrowing the list to their own reports; learners are restricted server-side. */
+  mine?: boolean;
+}
+
+export interface ModerationReviewListQuery extends ListQuery {
+  targetType?: ContentTargetType;
+  targetId?: string;
+  decision?: ModerationDecision;
+  reportId?: string;
+}
+
+export interface ResolveContentReportInput {
+  decision: ModerationDecision;
+  resolutionNotes?: string;
+  /** Set when handing the case to platform safety staff. */
+  escalatedToId?: string;
+}
+
+export interface CreateContentReportInput {
+  lessonId?: string;
+  activityId?: string;
+  targetType?: ContentTargetType;
+  targetId?: string;
+  reason: ContentReportReason;
+  details?: string;
+}
+
+// ── Authoring: questions, answer options and hints ──────────────────────────
+
+export interface AnswerOptionRow {
+  id: string;
+  questionId: string;
+  label: string;
+  isCorrect: boolean;
+  sortOrder: number;
+  feedback: string | null;
+  /** Pairs a MATCHING option with its partner; groups a SORTING bucket. */
+  matchKey: string | null;
+  mediaId: string | null;
+}
+
+export interface HintRow {
+  id: string;
+  questionId: string;
+  body: string;
+  sortOrder: number;
+  /** Recorded, not punished — the blueprint tracks hint use rather than charging for it. */
+  pointsCost: number;
+}
+
+export interface QuestionRow {
+  id: string;
+  activityId: string;
+  type: QuestionType;
+  prompt: string;
+  explanation: string | null;
+  difficultyBand: DifficultyBand;
+  pointsValue: number;
+  sortOrder: number;
+  timeLimitSeconds: number | null;
+  promptMediaId: string | null;
+  objectiveId: string | null;
+  objective: { id: string; code: string; statement: string } | null;
+  correctNumeric: number | null;
+  numericTolerance: number | null;
+  correctBoolean: boolean | null;
+  correctText: string[] | null;
+  options: AnswerOptionRow[];
+  hints: HintRow[];
+}
+
+export interface AnswerOptionInput {
+  label: string;
+  isCorrect?: boolean;
+  sortOrder?: number;
+  feedback?: string;
+  matchKey?: string;
+}
+
+export interface HintInput {
+  body: string;
+  sortOrder?: number;
+  pointsCost?: number;
+}
+
+export interface QuestionInput {
+  type: QuestionType;
+  prompt: string;
+  explanation?: string;
+  difficultyBand?: DifficultyBand;
+  pointsValue?: number;
+  sortOrder?: number;
+  correctNumeric?: number | null;
+  numericTolerance?: number | null;
+  correctBoolean?: boolean | null;
+  correctText?: string[] | null;
+  options?: AnswerOptionInput[];
+  hints?: HintInput[];
+}
+
+export interface LessonSectionInput {
+  heading: string;
+  body: string;
+  /** EXPLANATION or WORKED_EXAMPLE in practice; the server accepts any activity type. */
+  kind?: ActivityType;
+  sortOrder?: number;
+}

@@ -16,6 +16,7 @@ export { BrandingPage } from './BrandingPage';
 export { CurriculumPage } from './CurriculumPage';
 export { FeaturesPage } from './FeaturesPage';
 export { GamificationPage } from './GamificationPage';
+export { ModerationPage } from './ModerationPage';
 export { OrganizationDetailPage } from './OrganizationDetailPage';
 export { OrganizationsPage } from './OrganizationsPage';
 export { RolesPage } from './RolesPage';

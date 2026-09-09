@@ -91,6 +91,21 @@ export async function apiDelete(url: string, config?: AxiosRequestConfig): Promi
   await send<void>({ ...config, method: 'DELETE', url });
 }
 
+/**
+ * DELETE for the routes that answer 200 with the deleted row rather than 204.
+ *
+ * Content authoring does this deliberately — removing a question hands back what
+ * was removed, so an undo or a confirmation can name it. Kept separate from
+ * `apiDelete` so the common case still has a `void` return and callers are not
+ * tempted to read a body that isn't there.
+ */
+export async function apiDeleteReturning<T>(
+  url: string,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  return (await send<T>({ ...config, method: 'DELETE', url })).data;
+}
+
 /** Multipart upload helper for the media module. */
 export async function apiUpload<T>(
   url: string,

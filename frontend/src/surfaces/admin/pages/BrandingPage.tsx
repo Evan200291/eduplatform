@@ -36,6 +36,8 @@ import {
   updateTheme,
 } from '@/theme/theme.api';
 import type { ThemeRow, ThemeStatus } from '@/theme/theme.types';
+import { publicMediaFileUrl, uploadMedia } from '@/content/content.api';
+import { toApiError } from '@/api';
 
 const STATUS_TONE: Record<ThemeStatus, BadgeTone> = {
   DRAFT: 'neutral',
@@ -483,6 +485,7 @@ function EditThemeModal({
   const [fontHeading, setFontHeading] = useState(theme.fontHeading);
   const [fontBody, setFontBody] = useState(theme.fontBody);
   const [fontBaseSize, setFontBaseSize] = useState(theme.fontBaseSize);
+  const [logoMediaId, setLogoMediaId] = useState(theme.logoMediaId);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -491,6 +494,7 @@ function EditThemeModal({
         fontHeading,
         fontBody,
         fontBaseSize,
+        logoMediaId,
       }),
     onSuccess: onDone,
   });
@@ -505,6 +509,12 @@ function EditThemeModal({
         }}
       >
         {mutation.error ? <ErrorState error={mutation.error} /> : null}
+
+        <LogoField
+          logoMediaId={logoMediaId}
+          onChange={setLogoMediaId}
+          themeName={theme.name}
+        />
 
         <div>
           <p className="mb-2 text-sm font-medium text-ink">Colours</p>
@@ -596,5 +606,87 @@ function EditThemeModal({
         </div>
       </form>
     </Modal>
+  );
+}
+
+/**
+ * The school's logo (PRD v2.5: schools may self-manage branding, "including logo
+ * upload and preview").
+ *
+ * Uploaded as public media, because the login screen renders a school's logo
+ * before anyone has authenticated — that is the one place branding has to work
+ * without a session. The upload and the theme save are deliberately separate
+ * steps: the file is stored immediately, and the theme only points at it when
+ * the form is saved, so abandoning the dialog leaves the live theme untouched.
+ *
+ * Like every other branding change, this reaches learners only once the theme is
+ * published. Uploading a logo does not change what anyone sees yet.
+ */
+function LogoField({
+  logoMediaId,
+  onChange,
+  themeName,
+}: {
+  logoMediaId: string | null;
+  onChange: (mediaId: string | null) => void;
+  themeName: string;
+}) {
+  const [error, setError] = useState<string | null>(null);
+
+  const upload = useMutation({
+    mutationFn: (file: File) =>
+      uploadMedia(file, {
+        altText: `${themeName} school logo`,
+        isPublic: true,
+        ownership: 'SCHOOL_OWNED',
+      }),
+    onSuccess: (asset) => {
+      setError(null);
+      onChange(asset.id);
+    },
+    onError: (cause) => setError(toApiError(cause).message),
+  });
+
+  return (
+    <Field
+      label="Logo"
+      hint="Shown on the sign-in screen and in the app header. PNG or SVG, up to 10 MB."
+    >
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex h-16 w-32 items-center justify-center rounded-md border border-border bg-surface-sunken p-2">
+          {logoMediaId ? (
+            <img
+              src={publicMediaFileUrl(logoMediaId)}
+              alt={`${themeName} logo`}
+              className="max-h-full max-w-full object-contain"
+            />
+          ) : (
+            <span className="text-xs text-ink-muted">No logo</span>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/svg+xml,image/webp"
+            className="text-sm text-ink file:mr-3 file:rounded-md file:border-0 file:bg-primary-soft file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-strong"
+            disabled={upload.isPending}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) upload.mutate(file);
+              event.target.value = '';
+            }}
+          />
+          {logoMediaId ? (
+            <Button type="button" size="sm" variant="outline" onClick={() => onChange(null)}>
+              Remove logo
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      {upload.isPending ? <p className="mt-2 text-sm text-ink-muted">Uploading…</p> : null}
+      {error ? <p className="mt-2 text-sm text-danger-strong">{error}</p> : null}
+    </Field>
   );
 }

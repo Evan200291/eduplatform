@@ -18,6 +18,7 @@ export {
   apiPatch,
   apiPut,
   apiDelete,
+  apiDeleteReturning,
   apiUpload,
 } from './request';
 export type {

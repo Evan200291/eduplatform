@@ -8,6 +8,7 @@ import {
   IconGamification,
   IconGrade,
   IconHome,
+  IconModeration,
   IconOrganization,
   IconRoles,
   IconSafety,
@@ -101,6 +102,12 @@ export const ADMIN_NAV: readonly NavSection[] = [
         label: 'Subscription',
         icon: IconBilling,
         anyOf: ['subscription.read'],
+      },
+      {
+        to: paths.admin.moderation,
+        label: 'Moderation',
+        icon: IconModeration,
+        anyOf: ['content.report.review'],
       },
       {
         to: paths.admin.audit,

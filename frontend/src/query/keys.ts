@@ -66,6 +66,7 @@ export const qk = {
     list: (params?: unknown) => ['activities', 'list', params ?? {}] as const,
     detail: (id: string) => ['activities', 'detail', id] as const,
     delivery: (id: string) => ['activities', 'delivery', id] as const,
+    questions: (activityId: string) => ['activities', 'questions', activityId] as const,
   },
   assignments: {
     all: ['assignments'] as const,
@@ -231,5 +232,11 @@ export const qk = {
     detail: (id: string) => ['audit', 'detail', id] as const,
     targetHistory: (targetType: string, targetId: string) =>
       ['audit', 'target-history', targetType, targetId] as const,
+  },
+  moderation: {
+    all: ['moderation'] as const,
+    reports: (params?: unknown) => ['moderation', 'reports', params ?? {}] as const,
+    report: (id: string) => ['moderation', 'report', id] as const,
+    reviews: (params?: unknown) => ['moderation', 'reviews', params ?? {}] as const,
   },
 } as const;
