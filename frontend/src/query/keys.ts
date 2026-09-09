@@ -233,6 +233,13 @@ export const qk = {
     targetHistory: (targetType: string, targetId: string) =>
       ['audit', 'target-history', targetType, targetId] as const,
   },
+  support: {
+    all: ['support'] as const,
+    list: (params?: unknown) => ['support', 'list', params ?? {}] as const,
+    detail: (id: string) => ['support', 'detail', id] as const,
+    summary: ['support', 'summary'] as const,
+    policies: ['support', 'policies'] as const,
+  },
   moderation: {
     all: ['moderation'] as const,
     reports: (params?: unknown) => ['moderation', 'reports', params ?? {}] as const,

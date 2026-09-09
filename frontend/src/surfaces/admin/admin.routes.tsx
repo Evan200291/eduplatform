@@ -21,6 +21,7 @@ import {
   SchoolDetailPage,
   SchoolsPage,
   SettingsPage,
+  SupportPage,
   UserDetailPage,
   UsersPage,
 } from './pages';
@@ -134,6 +135,10 @@ export const ADMIN_ROUTES: readonly RouteObject[] = [
               {
                 element: <RequirePermission anyOf={['content.report.review']} />,
                 children: [{ path: 'moderation', element: <ModerationPage /> }],
+              },
+              {
+                element: <RequirePermission anyOf={['support.create', 'support.read.all']} />,
+                children: [{ path: 'support', element: <SupportPage /> }],
               },
             ],
           },

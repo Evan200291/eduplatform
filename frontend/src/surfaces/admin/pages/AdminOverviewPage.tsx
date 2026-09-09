@@ -15,7 +15,9 @@ import {
   panel,
   text,
 } from '@/components/ui';
+import { Link } from 'react-router-dom';
 import { QueryBoundary } from '@/components/feedback';
+import { paths } from '@/routes/paths';
 import { qk } from '@/query/keys';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { fetchSchoolDashboard } from '@/dashboard/dashboard.api';
@@ -152,6 +154,7 @@ export function AdminOverviewPage() {
                   value={data.waiting.openSupportTickets}
                   icon={IconSupport}
                   accent="danger"
+                  to={paths.admin.support}
                 />
               </CardBody>
             </Card>
@@ -225,6 +228,7 @@ function Stat({
   icon: Icon,
   accent,
   className,
+  to,
 }: {
   label: string;
   value: number;
@@ -232,9 +236,15 @@ function Stat({
   accent: TileAccent;
   /** Lets a tile drop its own chrome when it is already sitting inside a card. */
   className?: string;
+  /**
+   * Where the figure leads. A count of work waiting on someone is not
+   * information, it is a prompt -- so the tiles that represent a queue link to
+   * it and the rest stay inert.
+   */
+  to?: string;
 }) {
-  return (
-    <div className={cn(panel, 'flex flex-col gap-3 p-4', className)}>
+  const body = (
+    <>
       <span
         aria-hidden
         className={cn('grid h-9 w-9 shrink-0 place-items-center rounded-md', TILE_ACCENTS[accent])}
@@ -247,8 +257,26 @@ function Stat({
         <p className={cn(text.heading, 'text-2xl tabular-nums')}>{value}</p>
         <p className={cn(text.eyebrow, 'mt-1')}>{label}</p>
       </div>
-    </div>
+    </>
   );
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        className={cn(
+          panel,
+          'flex flex-col gap-3 p-4 transition-colors hover:bg-surface-sunken',
+          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+          className,
+        )}
+      >
+        {body}
+      </Link>
+    );
+  }
+
+  return <div className={cn(panel, 'flex flex-col gap-3 p-4', className)}>{body}</div>;
 }
 
 /** One label/value line. Used in a `divide-y` list so long runs stay scannable. */

@@ -14,6 +14,7 @@ import {
   IconSafety,
   IconSchool,
   IconSettings,
+  IconSupport,
   IconUsers,
 } from '@/components/ui';
 import type { NavSection } from '@/components/layout';
@@ -102,6 +103,12 @@ export const ADMIN_NAV: readonly NavSection[] = [
         label: 'Subscription',
         icon: IconBilling,
         anyOf: ['subscription.read'],
+      },
+      {
+        to: paths.admin.support,
+        label: 'Support',
+        icon: IconSupport,
+        anyOf: ['support.create', 'support.read.all'],
       },
       {
         to: paths.admin.moderation,

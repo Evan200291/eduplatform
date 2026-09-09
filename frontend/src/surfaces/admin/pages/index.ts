@@ -23,5 +23,6 @@ export { RolesPage } from './RolesPage';
 export { SchoolDetailPage } from './SchoolDetailPage';
 export { SchoolsPage } from './SchoolsPage';
 export { SettingsPage } from './SettingsPage';
+export { SupportPage } from './SupportPage';
 export { UserDetailPage } from './UserDetailPage';
 export { UsersPage } from './UsersPage';
