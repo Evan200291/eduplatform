@@ -414,8 +414,24 @@ function AddUserModal({ onClose, onDone }: { onClose: () => void; onDone: () => 
   );
 }
 
+/**
+ * Strips a header row if the file has one.
+ *
+ * A real export starts with something like "First name,Last name". Sending that
+ * through would create a learner called "First name", so it is dropped when the
+ * first line reads like column titles rather than a person.
+ */
+function stripHeaderRow(text: string): string {
+  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+  const first = (lines[0] ?? '').toLowerCase();
+  const looksLikeHeader =
+    /first\s*name|forename|given/.test(first) || /last\s*name|surname|family/.test(first);
+  return (looksLikeHeader ? lines.slice(1) : lines).join('\n').trim();
+}
+
 function BulkImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   const [raw, setRaw] = useState('');
+  const [fileName, setFileName] = useState<string | null>(null);
   const [results, setResults] = useState<BulkStudentResult[] | null>(null);
 
   const bulk = useMutation({
@@ -426,7 +442,10 @@ function BulkImportModal({ onClose, onDone }: { onClose: () => void; onDone: () 
         .filter(Boolean)
         .map((line) => {
           const parts = line.includes(',') ? line.split(',') : line.split(/\s+/);
-          const [firstName, ...rest] = parts.map((part) => part.trim()).filter(Boolean);
+          const [firstName, ...rest] = parts
+            // A CSV export commonly quotes its fields; strip them before use.
+            .map((part) => part.trim().replace(/^"(.*)"$/, '$1').trim())
+            .filter(Boolean);
           return { firstName: firstName ?? line, lastName: rest.join(' ') };
         });
       return bulkCreateStudents({ students });
@@ -465,9 +484,42 @@ function BulkImportModal({ onClose, onDone }: { onClose: () => void; onDone: () 
           }}
         >
           {bulk.error ? <ErrorState error={bulk.error} /> : null}
+          {/*
+            A CSV export from the school's existing system is what an admin
+            actually has in hand, so the file is the first-class input and the
+            textarea stays as the paste-a-few fallback. Parsing happens here
+            because the endpoint takes a name list, not a file — and a header
+            row, quoted fields and CRLF line endings are exactly what a real
+            export contains.
+          */}
+          <Field
+            label="CSV file"
+            hint="A header row is detected and skipped. Columns: first name, last name."
+          >
+            <input
+              type="file"
+              accept=".csv,text/csv,text/plain"
+              className="text-sm text-ink file:mr-3 file:rounded-md file:border-0 file:bg-primary-soft file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-strong"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                if (!file) return;
+                setFileName(file.name);
+                void file.text().then((text) => setRaw(stripHeaderRow(text)));
+              }}
+            />
+          </Field>
+
+          {fileName ? (
+            <p className="text-sm text-ink-muted">
+              Loaded <span className="text-ink">{fileName}</span> — check the list below before
+              creating anything.
+            </p>
+          ) : null}
+
           <Field
             label="Students"
-            hint="One per line: First name Last name"
+            hint="One per line: First name, Last name. Edit here if the file needs a correction."
             isRequired
           >
             <Textarea

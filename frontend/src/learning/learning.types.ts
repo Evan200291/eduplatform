@@ -15,6 +15,12 @@ export interface PathItem {
   sortOrder: number;
   status: PathItemStatus;
   isRequired: boolean;
+  /**
+   * Why this step is where it is — set when a step is locked behind
+   * prerequisites, e.g. "Locked until 2 prerequisite topic(s) are secure."
+   * The server has always returned it; the mirror simply never carried it.
+   */
+  reason: string | null;
   unlockedAt: string | null;
   startedAt: string | null;
   completedAt: string | null;

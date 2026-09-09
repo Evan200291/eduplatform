@@ -271,6 +271,15 @@ function PathStepRow({
             >
               {STATUS_LABEL[item.status]}
             </Badge>
+            {/*
+              PRD v2.5: show locked steps *and* explain how they unlock. The
+              server has always written the reason onto the step; it simply
+              never reached the screen, so a learner saw a padlock and no way
+              to work out what to do about it.
+            */}
+            {isLocked && item.reason ? (
+              <p className="mt-2 text-sm text-ink-muted">{item.reason}</p>
+            ) : null}
           </div>
         </div>
         {isPlayable && hasContent ? (

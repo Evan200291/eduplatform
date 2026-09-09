@@ -33,6 +33,14 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    test: {
+      // jsdom rather than node: the preference store writes to document and
+      // localStorage on construction, so a bare node environment cannot load it.
+      environment: 'jsdom',
+      globals: false,
+      include: ['src/**/*.test.{ts,tsx}'],
+      restoreMocks: true,
+    },
     build: {
       outDir: 'dist',
       sourcemap: true,
