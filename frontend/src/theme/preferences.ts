@@ -21,6 +21,7 @@ export interface Preferences {
   textScale: TextScale;
   motion: MotionPreference;
   highContrast: boolean;
+  dyslexiaFont: boolean;
 }
 
 const STORAGE_KEY = 'midas.preferences.v1';
@@ -29,6 +30,7 @@ const DEFAULTS: Preferences = {
   textScale: 1,
   motion: 'system',
   highContrast: false,
+  dyslexiaFont: false,
 };
 
 function read(): Preferences {
@@ -43,6 +45,7 @@ function read(): Preferences {
       motion:
         parsed.motion === 'reduced' || parsed.motion === 'full' ? parsed.motion : DEFAULTS.motion,
       highContrast: parsed.highContrast === true,
+      dyslexiaFont: parsed.dyslexiaFont === true,
     };
   } catch {
     // A corrupt or blocked storage entry must never stop the app from rendering.
@@ -64,6 +67,7 @@ export function applyPreferences(preferences: Preferences): void {
   root.style.setProperty('--midas-user-text-scale', String(preferences.textScale));
   root.dataset.motion = preferences.motion;
   root.dataset.contrast = preferences.highContrast ? 'high' : 'normal';
+  root.dataset.font = preferences.dyslexiaFont ? 'dyslexia' : 'default';
 }
 
 interface PreferencesState extends Preferences {
@@ -80,8 +84,8 @@ export const usePreferences = create<PreferencesState>((setState, getState) => {
 
     set(key, value) {
       setState({ [key]: value } as Partial<PreferencesState>);
-      const { textScale, motion, highContrast } = getState();
-      const next = { textScale, motion, highContrast };
+      const { textScale, motion, highContrast, dyslexiaFont } = getState();
+      const next = { textScale, motion, highContrast, dyslexiaFont };
       applyPreferences(next);
       persist(next);
     },

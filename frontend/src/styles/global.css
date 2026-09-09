@@ -182,3 +182,34 @@
   outline-width: 4px;
 }
 
+
+/*
+ * Dyslexia-friendly reading (PRD v2.5 accessibility commitments).
+ *
+ * The typeface is the smaller half of this. The evidence behind readability for
+ * dyslexic readers points hardest at spacing — letter, word and line — so this
+ * rule changes all three rather than swapping a font and calling it done.
+ *
+ * The family list prefers OpenDyslexic when the reader has installed it locally,
+ * then falls back to wide humanist faces with distinct letterforms that ship with
+ * every OS. Nothing here downloads a webfont: a school that wants OpenDyslexic
+ * served to every device should have it self-hosted and added to index.html,
+ * which is a deliberate decision about a third-party asset rather than a default.
+ */
+:root[data-font='dyslexia'] {
+  --midas-font-font-body: 'OpenDyslexic', 'Open Dyslexic', Verdana, Tahoma, 'Trebuchet MS', sans-serif;
+  --midas-font-font-heading: 'OpenDyslexic', 'Open Dyslexic', Verdana, Tahoma, 'Trebuchet MS', sans-serif;
+}
+
+:root[data-font='dyslexia'] body {
+  letter-spacing: 0.035em;
+  word-spacing: 0.12em;
+  line-height: 1.7;
+}
+
+/* Long-form reading benefits most; keep tables and controls from growing loose. */
+:root[data-font='dyslexia'] :where(p, li, dd, blockquote) {
+  letter-spacing: 0.045em;
+  word-spacing: 0.16em;
+  max-width: 66ch;
+}

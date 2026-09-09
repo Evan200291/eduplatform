@@ -37,7 +37,7 @@ const MOTION_OPTIONS: { value: MotionPreference; label: string }[] = [
  */
 export function PreferencesPage() {
   useDocumentTitle('Accessibility & display');
-  const { textScale, motion, highContrast, set, reset } = usePreferences();
+  const { textScale, motion, highContrast, dyslexiaFont, set, reset } = usePreferences();
 
   return (
     <div className="flex flex-col gap-6">
@@ -59,6 +59,13 @@ export function PreferencesPage() {
               }))}
             />
           </Field>
+
+          <Checkbox
+            label="Dyslexia-friendly text"
+            hint="A wider typeface with more space between letters, words and lines."
+            checked={dyslexiaFont}
+            onChange={(event) => set('dyslexiaFont', event.target.checked)}
+          />
 
           <p className="rounded-md bg-surface-sunken p-4 text-base leading-body text-ink">
             The quick brown fox jumps over the lazy dog. This is how your reading text will look.
