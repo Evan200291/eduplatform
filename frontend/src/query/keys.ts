@@ -91,6 +91,7 @@ export const qk = {
     forStudent: (studentId: string) => ['progress', 'student', studentId] as const,
     summary: (params?: unknown) => ['progress', 'summary', params ?? {}] as const,
     notes: (studentId: string) => ['progress', 'notes', studentId] as const,
+    judgments: (params?: unknown) => ['progress', 'judgments', params ?? {}] as const,
   },
   mastery: {
     all: ['mastery'] as const,

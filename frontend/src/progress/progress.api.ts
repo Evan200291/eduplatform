@@ -1,7 +1,13 @@
-import { apiGet, apiGetPaged, apiPost } from '@/api';
+import { apiGet, apiGetPaged, apiPatch, apiPost } from '@/api';
 import type { Paginated } from '@/api/types';
 import type { MasteryRecord } from '@/assessment/assessment.types';
-import type { ProgressListQuery, ProgressRecord, ProgressSummary, TeacherNote } from './progress.types';
+import type {
+  ProgressListQuery,
+  ProgressRecord,
+  ProgressSummary,
+  TeacherJudgment,
+  TeacherNote,
+} from './progress.types';
 
 /** Progress (completion/engagement) and mastery (understanding) — deliberately distinct. */
 
@@ -25,9 +31,14 @@ export function fetchMasteryRecords(query?: { studentId?: string; subjectId?: st
   return apiGetPaged<MasteryRecord>('/mastery', query);
 }
 
+/**
+ * A teacher judgment replacing the system's inference on one mastery row.
+ * `clearOverride` hands the row back to the evidence engine; the note is still
+ * required, so handing back is explained too.
+ */
 export function overrideMastery(
   masteryId: string,
-  input: { level: string; note: string },
+  input: { level: string; note: string; clearOverride?: boolean },
 ): Promise<MasteryRecord> {
   return apiPost<MasteryRecord>(`/mastery/${encodeURIComponent(masteryId)}/override`, input);
 }
@@ -45,6 +56,30 @@ export function createStudentNote(input: {
   return apiPost<TeacherNote>('/notes', input);
 }
 
-export function createTeacherAssessment(input: Record<string, unknown>): Promise<unknown> {
-  return apiPost('/teacher-assessments', input);
+export function createTeacherAssessment(input: {
+  studentId: string;
+  subjectId?: string;
+  topicId?: string;
+  level: string;
+  comment?: string;
+  countsAsEvidence?: boolean;
+}): Promise<TeacherJudgment> {
+  return apiPost<TeacherJudgment>('/teacher-assessments', input);
+}
+
+export function fetchTeacherAssessments(query?: {
+  studentId?: string;
+  subjectId?: string;
+  topicId?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<Paginated<TeacherJudgment>> {
+  return apiGetPaged<TeacherJudgment>('/teacher-assessments', query);
+}
+
+export function updateTeacherAssessment(
+  id: string,
+  input: { level?: string; comment?: string; countsAsEvidence?: boolean },
+): Promise<TeacherJudgment> {
+  return apiPatch<TeacherJudgment>(`/teacher-assessments/${encodeURIComponent(id)}`, input);
 }

@@ -61,3 +61,21 @@ export interface TeacherNote {
   createdAt: string;
   author: { id: string; displayName: string };
 }
+
+/** Mirrors `JUDGMENT_SELECT` in `progress.service.ts` — a teacher's recorded judgment. */
+export interface TeacherJudgment {
+  id: string;
+  studentId: string;
+  teacherId: string;
+  subjectId: string | null;
+  topicId: string | null;
+  level: string;
+  band: string | null;
+  comment: string | null;
+  countsAsEvidence: boolean;
+  assessedAt: string;
+  createdAt: string;
+  teacher: { id: string; displayName: string };
+  subject: { id: string; name: string } | null;
+  topic: { id: string; name: string } | null;
+}

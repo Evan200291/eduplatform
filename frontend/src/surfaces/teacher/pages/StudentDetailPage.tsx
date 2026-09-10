@@ -33,6 +33,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title';
 import { humanize, toneFor } from '../lib/humanize';
 import type { StudentNavState } from '../lib/nav-state';
 import { RecognitionActions, StudentMissionsCard } from './StudentRecognition';
+import { ChangeMasteryButton, TeacherJudgmentsCard } from './StudentMasteryTools';
 
 const MASTERY_TONE = {
   NOT_ASSESSED: 'neutral',
@@ -138,11 +139,18 @@ function StudentDetail({ studentId }: { studentId: string }) {
                   <ul className="flex flex-col gap-3">
                     {masteryQuery.data.topics.map((record) => (
                       <li key={record.id} className="flex flex-col gap-1">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="text-sm text-ink">{record.topic.name}</span>
-                          <Badge tone={toneFor(MASTERY_TONE, record.level)}>{humanize(record.level)}</Badge>
+                          <div className="flex items-center gap-1">
+                            {record.teacherOverride ? <Badge tone="info">Teacher judgement</Badge> : null}
+                            <Badge tone={toneFor(MASTERY_TONE, record.level)}>{humanize(record.level)}</Badge>
+                            <ChangeMasteryButton record={record} studentId={studentId} />
+                          </div>
                         </div>
                         <ProgressBar value={record.scorePercent} label="Score" />
+                        {record.teacherOverride && record.overrideNote ? (
+                          <p className="text-xs text-ink-muted">&ldquo;{record.overrideNote}&rdquo;</p>
+                        ) : null}
                       </li>
                     ))}
                   </ul>
@@ -256,6 +264,12 @@ function StudentDetail({ studentId }: { studentId: string }) {
             </div>
           </CardBody>
         </Card>
+
+        <TeacherJudgmentsCard
+          studentId={studentId}
+          topics={masteryQuery.data?.topics ?? []}
+          className="lg:col-span-2"
+        />
 
         <StudentMissionsCard studentId={studentId} className="lg:col-span-2" />
 
