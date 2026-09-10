@@ -2,10 +2,12 @@ import { apiDeleteReturning, apiGet, apiGetPaged, apiPatch, apiPost, apiPut } fr
 import type { Paginated } from '@/api/types';
 import type {
   CompleteItemResult,
+  CreateRecommendationInput,
   LearningPath,
   PathItem,
   RecommendationListQuery,
   RecommendationRecord,
+  RecommendationSummary,
 } from './learning.types';
 
 /**
@@ -130,6 +132,24 @@ export function fetchRecommendations(
   query?: RecommendationListQuery,
 ): Promise<Paginated<RecommendationRecord>> {
   return apiGetPaged<RecommendationRecord>('/recommendations', query);
+}
+
+/** Counts for the queue header, without pulling the whole queue. */
+export function fetchRecommendationSummary(): Promise<RecommendationSummary> {
+  return apiGet<RecommendationSummary>('/recommendations/summary');
+}
+
+export function fetchRecommendation(recommendationId: string): Promise<RecommendationRecord> {
+  return apiGet<RecommendationRecord>(`/recommendations/${encodeURIComponent(recommendationId)}`);
+}
+
+/**
+ * A teacher raising a proposal by hand. The server records it as origin
+ * TEACHER_REQUEST with TEACHER_JUDGMENT evidence, and it goes through the same
+ * decision step as a system proposal.
+ */
+export function createRecommendation(input: CreateRecommendationInput): Promise<RecommendationRecord> {
+  return apiPost<RecommendationRecord>('/recommendations', input);
 }
 
 export function decideRecommendation(

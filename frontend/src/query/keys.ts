@@ -83,6 +83,7 @@ export const qk = {
   recommendations: {
     all: ['recommendations'] as const,
     pending: (params?: unknown) => ['recommendations', 'pending', params ?? {}] as const,
+    summary: ['recommendations', 'summary'] as const,
   },
   progress: {
     all: ['progress'] as const,

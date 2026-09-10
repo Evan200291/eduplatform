@@ -66,18 +66,87 @@ export interface CompleteItemResult {
   pathCompleted: boolean;
 }
 
+export type RecommendationStatus =
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'MODIFIED'
+  | 'REJECTED'
+  | 'DEFERRED'
+  | 'AUTO_APPROVED'
+  | 'SUPERSEDED';
+
+export type RecommendationOrigin =
+  | 'SCREENING_ASSESSMENT'
+  | 'ONGOING_EVIDENCE'
+  | 'TEACHER_REQUEST'
+  | 'REASSESSMENT'
+  | 'SCHEDULED_REVIEW';
+
+/** One topic inside a proposal. Teacher-raised proposals carry no accuracy. */
+export interface ProposalTopic {
+  topicId: string;
+  topicName: string;
+  accuracyPercent?: number;
+}
+
+/**
+ * The server reads `practise` (add or open these steps) and `advance` (skip
+ * these, already secure) when a proposal is applied to a path; `consolidate`
+ * is informational.
+ */
+export interface RecommendationProposal {
+  overallPercent?: number;
+  suggestedStartingBand?: string | null;
+  practise?: ProposalTopic[];
+  consolidate?: ProposalTopic[];
+  advance?: ProposalTopic[];
+}
+
+/** Mirrors `RECOMMENDATION_SELECT` in `recommendations.service.ts`. */
 export interface RecommendationRecord {
   id: string;
   studentId: string;
-  subjectId: string;
-  proposedPath: unknown;
-  status: 'PENDING' | 'APPROVED' | 'MODIFIED' | 'REJECTED' | 'DEFERRED';
+  subjectId: string | null;
+  topicId: string | null;
+  pathId: string | null;
+  origin: RecommendationOrigin;
+  status: RecommendationStatus;
+  rationale: string | null;
+  proposal: RecommendationProposal | null;
+  appliedChange: RecommendationProposal | null;
+  priority: number;
+  evidenceSource: string;
+  confidence: string;
+  decidedById: string | null;
+  decidedAt: string | null;
+  decisionNote: string | null;
+  autoApproveAt: string | null;
+  expiresAt: string | null;
   createdAt: string;
   student: { id: string; firstName: string; lastName: string; displayName: string };
-  subject: { id: string; name: string; key: string };
+  subject: { id: string; name: string; key: string } | null;
+  topic: { id: string; name: string; key: string } | null;
+}
+
+export interface RecommendationSummary {
+  pending: number;
+  deferred: number;
+  dueForAutoApproval: number;
+  byOrigin: { origin: RecommendationOrigin; count: number }[];
+}
+
+export interface CreateRecommendationInput {
+  studentId: string;
+  subjectId?: string;
+  topicId?: string;
+  rationale: string;
+  proposal: RecommendationProposal;
+  priority?: number;
 }
 
 export interface RecommendationListQuery extends ListQuery {
   pendingOnly?: boolean;
   studentId?: string;
+  status?: RecommendationStatus;
+  origin?: RecommendationOrigin;
 }
