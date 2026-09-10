@@ -9,6 +9,7 @@ export interface CurriculumProgram {
   name: string;
   key: string;
   description: string | null;
+  sortOrder: number;
   status: ContentStatus;
 }
 
@@ -17,6 +18,7 @@ export interface CurriculumUnit {
   programId: string;
   name: string;
   key: string;
+  description: string | null;
   sortOrder: number;
   status: ContentStatus;
 }
@@ -30,8 +32,21 @@ export interface CurriculumTopic {
   difficultyBand: DifficultyBand;
   estimatedMinutes: number | null;
   masteryThreshold: number;
-  prerequisites: string[];
+  description: string | null;
+  sortOrder: number;
   status: ContentStatus;
+  _count?: { objectives: number; lessons: number; activities: number; assessments: number };
+}
+
+/** `GET /curriculum/topics/:id` — the list omits prerequisites and objectives. */
+export interface CurriculumTopicDetail extends CurriculumTopic {
+  objectives: LearningObjective[];
+  prerequisites: {
+    id: string;
+    isHard: boolean;
+    requiredTopic: { id: string; name: string; key: string; difficultyBand: DifficultyBand };
+  }[];
+  requiredFor: { id: string; isHard: boolean; topic: { id: string; name: string; key: string } }[];
 }
 
 export interface LearningObjective {
@@ -39,13 +54,16 @@ export interface LearningObjective {
   topicId: string;
   code: string;
   statement: string;
-  status: ContentStatus;
+  notes: string | null;
+  difficultyBand: DifficultyBand;
+  sortOrder: number;
 }
 
 export interface CurriculumListQuery extends ListQuery {
   subjectId?: string;
   unitId?: string;
   programId?: string;
+  topicId?: string;
   status?: ContentStatus;
   includeArchived?: boolean;
 }

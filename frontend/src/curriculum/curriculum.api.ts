@@ -1,9 +1,10 @@
-import { apiGet, apiGetPaged, apiPatch, apiPost } from '@/api';
+import { apiDelete, apiGet, apiGetPaged, apiPatch, apiPost, apiPut } from '@/api';
 import type { Paginated } from '@/api/types';
 import type {
   CurriculumListQuery,
   CurriculumProgram,
   CurriculumTopic,
+  CurriculumTopicDetail,
   CurriculumUnit,
   LearningObjective,
 } from './curriculum.types';
@@ -58,8 +59,18 @@ export function setUnitStatus(id: string, status: string, reason?: string): Prom
 export function fetchTopics(query?: CurriculumListQuery): Promise<Paginated<CurriculumTopic>> {
   return apiGetPaged<CurriculumTopic>(RESOURCE.topics, query);
 }
-export function fetchTopic(id: string): Promise<CurriculumTopic> {
-  return apiGet<CurriculumTopic>(`${RESOURCE.topics}/${encodeURIComponent(id)}`);
+export function fetchTopic(id: string): Promise<CurriculumTopicDetail> {
+  return apiGet<CurriculumTopicDetail>(`${RESOURCE.topics}/${encodeURIComponent(id)}`);
+}
+/**
+ * Replaces the whole prerequisite list. The server rejects a cycle, since the
+ * path engine could never unlock a topic that transitively requires itself.
+ */
+export function setTopicPrerequisites(
+  id: string,
+  prerequisites: { requiredTopicId: string; isHard: boolean }[],
+): Promise<unknown> {
+  return apiPut(`${RESOURCE.topics}/${encodeURIComponent(id)}/prerequisites`, { prerequisites });
 }
 export function createTopic(input: Record<string, unknown>): Promise<CurriculumTopic> {
   return apiPost<CurriculumTopic>(RESOURCE.topics, input);
@@ -79,4 +90,15 @@ export function createObjective(input: Record<string, unknown>): Promise<Learnin
 }
 export function updateObjective(id: string, input: Record<string, unknown>): Promise<LearningObjective> {
   return apiPatch<LearningObjective>(`${RESOURCE.objectives}/${encodeURIComponent(id)}`, input);
+}
+export function deleteObjective(id: string): Promise<unknown> {
+  return apiDelete(`${RESOURCE.objectives}/${encodeURIComponent(id)}`);
+}
+
+/** One call per reorder, so moving a row is a single request. */
+export function reorderCurriculum(
+  kind: keyof typeof RESOURCE,
+  items: { id: string; sortOrder: number }[],
+): Promise<unknown> {
+  return apiPost(`${RESOURCE[kind]}/reorder`, { items });
 }

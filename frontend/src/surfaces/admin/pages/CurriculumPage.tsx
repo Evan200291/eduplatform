@@ -44,6 +44,8 @@ import type { ContentStatus } from '@/content/content.types';
 import { CONTENT_STATUS_MOVE_LABEL, CONTENT_STATUS_TONE, nextContentStatuses } from '@/content/content-lifecycle';
 import { LessonSectionsEditor } from './LessonSectionsEditor';
 import { QuestionsEditor } from './QuestionsEditor';
+import { EditNodeModal, MoveButtons, ObjectivesModal, PrerequisitesModal } from './CurriculumEditors';
+import type { CurriculumProgram, CurriculumTopic, CurriculumUnit } from '@/curriculum/curriculum.types';
 
 const STATUS_TONE = CONTENT_STATUS_TONE;
 
@@ -248,6 +250,8 @@ function ProgramsCard({
     mutationFn: ({ id, status }: { id: string; status: ContentStatus }) => setProgramStatus(id, status),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: qk.curriculum.all }),
   });
+  const [editing, setEditing] = useState<CurriculumProgram | null>(null);
+  const ids = (query.data?.items ?? []).map((row) => row.id);
 
   return (
     <SectionCard
@@ -265,9 +269,17 @@ function ProgramsCard({
           <EmptyState title="No programs yet" />
         ) : (
           <ul className="flex flex-col gap-2 text-sm">
-            {query.data?.items.map((program) => (
-              <li key={program.id} className="flex items-center justify-between">
-                <span className="text-ink">{program.name}</span>
+            {query.data?.items.map((program, index) => (
+              <li key={program.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span className="flex items-center gap-1 text-ink">
+                  {canWrite ? <MoveButtons kind="programs" ids={ids} index={index} /> : null}
+                  {program.name}
+                  {canWrite ? (
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(program)}>
+                      Edit
+                    </Button>
+                  ) : null}
+                </span>
                 <LifecycleControl
                   status={program.status}
                   canWrite={canWrite}
@@ -280,6 +292,7 @@ function ProgramsCard({
           </ul>
         )}
       </QueryBoundary>
+      {editing ? <EditNodeModal kind="programs" node={editing} onClose={() => setEditing(null)} /> : null}
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add a program">
           <ParentedCreateForm
@@ -317,6 +330,8 @@ function UnitsCard({
     mutationFn: ({ id, status }: { id: string; status: ContentStatus }) => setUnitStatus(id, status),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: qk.curriculum.all }),
   });
+  const [editing, setEditing] = useState<CurriculumUnit | null>(null);
+  const ids = (query.data?.items ?? []).map((row) => row.id);
 
   return (
     <SectionCard
@@ -334,9 +349,17 @@ function UnitsCard({
           <EmptyState title="No units yet" />
         ) : (
           <ul className="flex flex-col gap-2 text-sm">
-            {query.data?.items.map((unit) => (
-              <li key={unit.id} className="flex items-center justify-between">
-                <span className="text-ink">{unit.name}</span>
+            {query.data?.items.map((unit, index) => (
+              <li key={unit.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span className="flex items-center gap-1 text-ink">
+                  {canWrite ? <MoveButtons kind="units" ids={ids} index={index} /> : null}
+                  {unit.name}
+                  {canWrite ? (
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(unit)}>
+                      Edit
+                    </Button>
+                  ) : null}
+                </span>
                 <LifecycleControl
                   status={unit.status}
                   canWrite={canWrite}
@@ -349,6 +372,7 @@ function UnitsCard({
           </ul>
         )}
       </QueryBoundary>
+      {editing ? <EditNodeModal kind="units" node={editing} onClose={() => setEditing(null)} /> : null}
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add a unit">
           <ParentedCreateForm
@@ -389,6 +413,11 @@ function TopicsCard({
     mutationFn: ({ id, status }: { id: string; status: ContentStatus }) => setTopicStatus(id, status),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: qk.curriculum.all }),
   });
+  const [editing, setEditing] = useState<CurriculumTopic | null>(null);
+  const [prereqFor, setPrereqFor] = useState<CurriculumTopic | null>(null);
+  const [objectivesFor, setObjectivesFor] = useState<CurriculumTopic | null>(null);
+  const allTopics = query.data?.items ?? [];
+  const ids = allTopics.map((row) => row.id);
   const updateMastery = useMutation({
     mutationFn: ({ id, masteryThreshold }: { id: string; masteryThreshold: number }) =>
       updateTopic(id, { masteryThreshold }),
@@ -411,10 +440,13 @@ function TopicsCard({
           <EmptyState title="No topics yet" />
         ) : (
           <ul className="flex flex-col gap-2 text-sm">
-            {query.data?.items.map((topic) => (
+            {query.data?.items.map((topic, index) => (
               <li key={topic.id} className="flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-ink">{topic.name}</span>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex items-center gap-1 text-ink">
+                    {canWrite ? <MoveButtons kind="topics" ids={ids} index={index} /> : null}
+                    {topic.name}
+                  </span>
                   <LifecycleControl
                     status={topic.status}
                     canWrite={canWrite}
@@ -431,11 +463,33 @@ function TopicsCard({
                   error={updateMastery.variables?.id === topic.id ? updateMastery.error : undefined}
                   onSave={(masteryThreshold) => updateMastery.mutate({ id: topic.id, masteryThreshold })}
                 />
+                <div className="flex flex-wrap gap-1">
+                  {canWrite ? (
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(topic)}>
+                      Edit
+                    </Button>
+                  ) : null}
+                  {canWrite ? (
+                    <Button size="sm" variant="ghost" onClick={() => setPrereqFor(topic)}>
+                      Prerequisites
+                    </Button>
+                  ) : null}
+                  <Button size="sm" variant="ghost" onClick={() => setObjectivesFor(topic)}>
+                    Objectives{topic._count ? ` (${topic._count.objectives})` : ''}
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </QueryBoundary>
+      {editing ? <EditNodeModal kind="topics" node={editing} onClose={() => setEditing(null)} /> : null}
+      {prereqFor ? (
+        <PrerequisitesModal topic={prereqFor} allTopics={allTopics} onClose={() => setPrereqFor(null)} />
+      ) : null}
+      {objectivesFor ? (
+        <ObjectivesModal topic={objectivesFor} canWrite={canWrite} onClose={() => setObjectivesFor(null)} />
+      ) : null}
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add a topic">
           <ParentedCreateForm
