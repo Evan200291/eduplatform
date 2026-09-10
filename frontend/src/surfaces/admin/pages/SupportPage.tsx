@@ -35,8 +35,10 @@ import {
   fetchSupportRequests,
   fetchSupportSummary,
   postSupportMessage,
+  rateSupportRequest,
   resolveSupportRequest,
   setSupportStatus,
+  triageSupportRequest,
 } from '@/support/support.api';
 import type {
   SupportCategory,
@@ -381,6 +383,9 @@ function RequestDetail({
   });
 
   const request = query.data;
+  const profile = useProfile();
+  const isRequester = Boolean(request && profile && request.requesterId === profile.id);
+  const isFinished = request?.status === 'RESOLVED' || request?.status === 'CLOSED';
 
   return (
     <Modal isOpen onClose={onClose} title={request ? `${request.reference} — ${request.subject}` : 'Request'} size="lg">
@@ -436,6 +441,19 @@ function RequestDetail({
                 </ul>
               )}
             </div>
+
+            {isRequester && isFinished ? (
+              <RateHelp requestId={request.id} currentScore={request.satisfactionScore} onDone={invalidate} />
+            ) : null}
+
+            {canRespond && !isFinished ? (
+              <TriageSection
+                requestId={request.id}
+                category={request.category}
+                priority={request.priority}
+                onDone={invalidate}
+              />
+            ) : null}
 
             <div className="border-t border-border pt-4">
               {send.error ? <ErrorState error={send.error} /> : null}
@@ -623,5 +641,189 @@ function RaiseRequestModal({ onClose }: { onClose: () => void }) {
         </Field>
       </div>
     </Modal>
+  );
+}
+
+const PRIORITY_OPTIONS: { value: SupportPriority; label: string }[] = [
+  { value: 'LOW', label: 'Low' },
+  { value: 'NORMAL', label: 'Normal' },
+  { value: 'HIGH', label: 'High' },
+  { value: 'URGENT', label: 'Urgent' },
+];
+
+const SCORE_LABEL = ['', 'It did not help', 'It helped a little', 'It was fine', 'It helped', 'It helped a lot'];
+
+/**
+ * Blueprint 13 asks whether the help actually helped. Only the person who
+ * raised the request is asked, and only once it has been resolved. The score
+ * buttons carry words, not just a number, so the meaning never rests on a
+ * colour or a star shape.
+ */
+function RateHelp({
+  requestId,
+  currentScore,
+  onDone,
+}: {
+  requestId: string;
+  currentScore: number | null;
+  onDone: () => void;
+}) {
+  const [score, setScore] = useState<number | null>(currentScore);
+  const [comment, setComment] = useState('');
+  const [isEditing, setEditing] = useState(currentScore === null);
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      rateSupportRequest(requestId, {
+        score: score ?? 0,
+        ...(comment.trim() ? { comment: comment.trim() } : {}),
+      }),
+    onSuccess: () => {
+      setEditing(false);
+      setComment('');
+      onDone();
+    },
+  });
+
+  if (!isEditing && currentScore !== null) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3 text-sm">
+        <span className="text-ink">
+          You rated this {currentScore} out of 5 — {SCORE_LABEL[currentScore]?.toLowerCase()}.
+        </span>
+        <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+          Change rating
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-border p-3">
+      <p className="mb-2 text-sm font-medium text-ink">Did this help?</p>
+      {mutation.error ? <ErrorState error={mutation.error} /> : null}
+      <div role="radiogroup" aria-label="How much it helped" className="flex flex-wrap gap-2">
+        {[1, 2, 3, 4, 5].map((value) => (
+          <Button
+            key={value}
+            size="sm"
+            role="radio"
+            aria-checked={score === value}
+            variant={score === value ? 'primary' : 'outline'}
+            onClick={() => setScore(value)}
+          >
+            {value} · {SCORE_LABEL[value]}
+          </Button>
+        ))}
+      </div>
+      <div className="mt-3">
+        <Field label="Anything to add" hint="Optional. Added to the conversation.">
+          <Textarea rows={2} maxLength={1000} value={comment} onChange={(event) => setComment(event.target.value)} />
+        </Field>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <Button size="sm" isLoading={mutation.isPending} disabled={score === null} onClick={() => mutation.mutate()}>
+          Send rating
+        </Button>
+        {currentScore !== null ? (
+          <Button size="sm" variant="outline" disabled={mutation.isPending} onClick={() => setEditing(false)}>
+            Cancel
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Triage decides what a request actually is. Changing the category can raise
+ * the priority to that category's floor, so the server may return a higher
+ * priority than was chosen. The response clock only restarts when asked —
+ * a mis-filed request should not buy extra time by default.
+ */
+function TriageSection({
+  requestId,
+  category,
+  priority,
+  onDone,
+}: {
+  requestId: string;
+  category: SupportCategory;
+  priority: SupportPriority;
+  onDone: () => void;
+}) {
+  const [isOpen, setOpen] = useState(false);
+  const [nextCategory, setNextCategory] = useState<SupportCategory>(category);
+  const [nextPriority, setNextPriority] = useState<SupportPriority>(priority);
+  const [recalculate, setRecalculate] = useState(false);
+  const [note, setNote] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      triageSupportRequest(requestId, {
+        ...(nextCategory !== category ? { category: nextCategory } : {}),
+        ...(nextPriority !== priority ? { priority: nextPriority } : {}),
+        ...(recalculate ? { recalculateTargets: true } : {}),
+        ...(note.trim() ? { note: note.trim() } : {}),
+      }),
+    onSuccess: () => {
+      setOpen(false);
+      setNote('');
+      setRecalculate(false);
+      onDone();
+    },
+  });
+
+  const hasChange = nextCategory !== category || nextPriority !== priority || note.trim().length > 0;
+
+  if (!isOpen) {
+    return (
+      <div>
+        <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+          Triage — change category or priority
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+      <p className="text-sm font-medium text-ink">Triage</p>
+      {mutation.error ? <ErrorState error={mutation.error} /> : null}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Category" hint="Can raise the priority to the category's minimum.">
+          <Select
+            value={nextCategory}
+            onChange={(event) => setNextCategory(event.target.value as SupportCategory)}
+            options={CATEGORY_OPTIONS}
+          />
+        </Field>
+        <Field label="Priority">
+          <Select
+            value={nextPriority}
+            onChange={(event) => setNextPriority(event.target.value as SupportPriority)}
+            options={PRIORITY_OPTIONS}
+          />
+        </Field>
+      </div>
+      <Checkbox
+        label="Restart the response targets from now"
+        hint="Only when the request was mis-filed and the old targets no longer make sense."
+        checked={recalculate}
+        onChange={(event) => setRecalculate(event.target.checked)}
+      />
+      <Field label="Triage note" hint="Optional. Saved as an internal note.">
+        <Textarea rows={2} maxLength={1000} value={note} onChange={(event) => setNote(event.target.value)} />
+      </Field>
+      {!hasChange ? <p className="text-sm text-ink-muted">Change the category or priority, or add a note.</p> : null}
+      <div className="flex gap-2">
+        <Button size="sm" isLoading={mutation.isPending} disabled={!hasChange} onClick={() => mutation.mutate()}>
+          Save triage
+        </Button>
+        <Button size="sm" variant="outline" disabled={mutation.isPending} onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </div>
   );
 }
