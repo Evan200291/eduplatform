@@ -24,6 +24,7 @@ import { equipReward, fetchRewards, redeemReward } from '@/gamification/gamifica
 import { qk } from '@/query/keys';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { playAccent } from '../play-accents';
+import { BuddyDiaryCard, RenameBuddyButton } from '../components/BuddyExtras';
 
 const SPECIES_LABEL: Record<SpeciesKey, string> = {
   'ember-fox': 'Ember Fox',
@@ -77,6 +78,7 @@ export function CompanionPage() {
               </span>
               <div>
                 <p className={cn(text.heading, 'text-2xl')}>{query.data.companion.name}</p>
+                <RenameBuddyButton currentName={query.data.companion.name} />
                 <p className="text-sm font-medium text-ink">
                   {SPECIES_LABEL[query.data.companion.speciesKey]} · {query.data.companion.stageLabel}
                 </p>
@@ -116,6 +118,8 @@ export function CompanionPage() {
           </Card>
         ) : null}
       </QueryBoundary>
+
+      {query.data?.companion ? <BuddyDiaryCard /> : null}
 
       <RewardsShop />
     </div>

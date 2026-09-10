@@ -12,6 +12,7 @@ import {
 import type { NextItemResult, SubmitAttemptResult, SubmitResponseInput } from '@/assessment/assessment.types';
 import { qk } from '@/query/keys';
 import { QuestionCard } from './QuestionCard';
+import { ReportProblemButton } from './ReportProblem';
 
 export interface AssessmentPlayerProps {
   assessmentId: string;
@@ -154,6 +155,9 @@ export function AssessmentPlayer({ assessmentId, isPractice, onComplete }: Asses
       ))}
       {answer.error ? <ErrorState error={answer.error} /> : null}
       {isPractice ? <Badge tone="info">Practice — this won&apos;t count toward your score.</Badge> : null}
+      <div className="flex justify-end">
+        <ReportProblemButton key={data.item.activityId} activityId={data.item.activityId} />
+      </div>
     </div>
   );
 }

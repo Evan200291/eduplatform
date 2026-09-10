@@ -17,6 +17,7 @@ import { AssessmentPlayer } from '../components/AssessmentPlayer';
 import { ActivityPlaceholder } from '../components/ActivityPlaceholder';
 import { ReaderActivity } from '../components/ReaderActivity';
 import { TeacherTaskActivity } from '../components/TeacherTaskActivity';
+import { ReportProblemButton } from '../components/ReportProblem';
 
 /**
  * Plays one activity, graded or not.
@@ -221,6 +222,7 @@ function ActivityOnlyPlayer({ activityId, pathId, itemId, assignmentId, onExit }
           </Button>
         }
         title={activity?.title ?? 'Activity'}
+        actions={<ReportProblemButton activityId={activityId} />}
       />
 
       <QueryBoundary isLoading={activityQuery.isPending} error={activityQuery.error}>

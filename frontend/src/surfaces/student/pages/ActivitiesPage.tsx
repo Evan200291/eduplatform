@@ -29,6 +29,7 @@ import { qk } from '@/query/keys';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { paths } from '@/routes/paths';
 import { playAccent, stateChip } from '../play-accents';
+import { ReportProblemButton } from '../components/ReportProblem';
 
 const STATUS_TONE = {
   LOCKED: 'neutral',
@@ -334,6 +335,7 @@ function LessonModal({
       title={query.data?.title ?? item.lesson?.title ?? 'Lesson'}
       footer={
         <>
+          <ReportProblemButton lessonId={lessonId} />
           <Button variant="ghost" onClick={onClose}>
             Close
           </Button>

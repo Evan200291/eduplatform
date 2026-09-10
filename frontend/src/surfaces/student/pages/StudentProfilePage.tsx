@@ -33,6 +33,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title';
 import { paths } from '@/routes/paths';
 import { OnboardingTour, useOnboardingTour } from '../components/OnboardingTour';
 import { playAccent } from '../play-accents';
+import { BadgesToEarnCard, PointsHistoryCard } from '../components/ProfileExtras';
 
 const PATH_MODE_LABEL: Record<PathMode, string> = {
   GRADE_BASED: 'following your grade level',
@@ -249,6 +250,11 @@ export function StudentProfilePage() {
           </QueryBoundary>
         </CardBody>
       </Card>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <BadgesToEarnCard />
+        <PointsHistoryCard />
+      </div>
 
       <OnboardingTour isOpen={tour.isOpen} onClose={tour.close} />
     </div>
