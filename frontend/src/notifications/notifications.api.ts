@@ -47,10 +47,13 @@ export function dismissNotification(id: string): Promise<NotificationRecord> {
   return apiPost<NotificationRecord>(`/notifications/${encodeURIComponent(id)}/dismiss`);
 }
 
-export function sendNotification(input: Record<string, unknown>): Promise<NotificationRecord> {
-  return apiPost<NotificationRecord>('/notifications/send', input);
+/** 202: rows are written now, delivery is settled by the dispatch job. */
+export function sendNotification(input: Record<string, unknown>): Promise<{ requested: number; created: number }> {
+  return apiPost('/notifications/send', input);
 }
 
-export function broadcastNotification(input: Record<string, unknown>): Promise<{ sent: number }> {
+export function broadcastNotification(
+  input: Record<string, unknown>,
+): Promise<{ audience: string; resolved: number; created: number }> {
   return apiPost('/notifications/broadcast', input);
 }

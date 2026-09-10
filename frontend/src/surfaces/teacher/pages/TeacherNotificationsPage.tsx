@@ -21,6 +21,7 @@ import {
 import { QueryBoundary } from '@/components/feedback';
 import {
   dismissNotification,
+  markNotificationActioned,
   fetchNotificationPreferences,
   fetchNotifications,
   markNotificationRead,
@@ -32,6 +33,8 @@ import { qk } from '@/query/keys';
 import { formatRelative } from '@/lib/format';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { humanize, toneFor } from '../lib/humanize';
+import { useCan } from '@/auth';
+import { ComposeMessageModal } from '@/notifications/ComposeMessage';
 
 const PRIORITY_TONE = { LOW: 'neutral', NORMAL: 'info', HIGH: 'warning', URGENT: 'danger' } as const;
 
@@ -48,6 +51,10 @@ export function TeacherNotificationsPage() {
   const queryClient = useQueryClient();
   const [state, setState] = useState<NotificationState | ''>('');
   const [showPreferences, setShowPreferences] = useState(false);
+  const canSend = useCan('notification.send');
+  const canBroadcast = useCan('notification.broadcast');
+  const [composing, setComposing] = useState<'direct' | 'broadcast' | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
   const listQuery = useQuery({
@@ -73,7 +80,17 @@ export function TeacherNotificationsPage() {
         title="Messages"
         description="Notices from your school, and alerts about students who are stuck or waiting on a decision."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {canSend ? (
+              <Button size="sm" onClick={() => setComposing('direct')}>
+                Send a message
+              </Button>
+            ) : null}
+            {canBroadcast ? (
+              <Button size="sm" variant="outline" onClick={() => setComposing('broadcast')}>
+                Announce
+              </Button>
+            ) : null}
             <Button
               variant="outline"
               size="sm"
@@ -89,6 +106,23 @@ export function TeacherNotificationsPage() {
           </div>
         }
       />
+
+      {notice ? (
+        <p className="rounded-lg bg-success-soft p-3 text-sm text-ink" role="status">
+          {notice}
+        </p>
+      ) : null}
+      {composing ? (
+        <ComposeMessageModal
+          mode={composing}
+          learnerSource="mine"
+          onClose={() => setComposing(null)}
+          onSent={(message) => {
+            setComposing(null);
+            setNotice(message);
+          }}
+        />
+      ) : null}
 
       {showPreferences ? <PreferencesCard /> : null}
 
@@ -138,6 +172,8 @@ function NotificationCard({ row, onChanged }: { row: NotificationRecord; onChang
     mutationFn: () => dismissNotification(row.id),
     onSuccess: onChanged,
   });
+  // Following the link is acting on it — the state the sender's reports read.
+  const actioned = useMutation({ mutationFn: () => markNotificationActioned(row.id), onSuccess: onChanged });
 
   return (
     <Card className={isUnread ? 'border-primary-muted bg-primary-soft/40' : undefined}>
@@ -153,7 +189,14 @@ function NotificationCard({ row, onChanged }: { row: NotificationRecord; onChang
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {row.actionPath ? (
-            <ButtonLink to={row.actionPath} size="sm" variant="outline">
+            <ButtonLink
+              to={row.actionPath}
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (row.state !== 'ACTIONED') actioned.mutate();
+              }}
+            >
               {row.actionLabel ?? 'View'}
             </ButtonLink>
           ) : null}

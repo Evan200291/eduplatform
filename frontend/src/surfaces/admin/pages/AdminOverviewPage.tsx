@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/cn';
 import {
@@ -10,6 +11,7 @@ import {
   IconSupport,
   IconUsers,
   IconWarning,
+  Button,
   PageHeader,
   ProgressBar,
   panel,
@@ -21,10 +23,15 @@ import { paths } from '@/routes/paths';
 import { qk } from '@/query/keys';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { fetchSchoolDashboard } from '@/dashboard/dashboard.api';
+import { useCan } from '@/auth';
+import { ComposeMessageModal } from '@/notifications/ComposeMessage';
 
 /** The school-level dashboard: is the school set up, is learning happening, what needs a human. */
 export function AdminOverviewPage() {
   useDocumentTitle('Overview');
+  const canBroadcast = useCan('notification.broadcast');
+  const [isAnnouncing, setAnnouncing] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const query = useQuery({
     queryKey: qk.dashboard.school,
@@ -38,7 +45,28 @@ export function AdminOverviewPage() {
       <PageHeader
         title={data ? data.school.name : 'Overview'}
         description="Your school at a glance."
+        actions={
+          canBroadcast ? (
+            <Button onClick={() => setAnnouncing(true)}>Make an announcement</Button>
+          ) : undefined
+        }
       />
+      {notice ? (
+        <p className="rounded-lg bg-success-soft p-3 text-sm text-ink" role="status">
+          {notice}
+        </p>
+      ) : null}
+      {isAnnouncing ? (
+        <ComposeMessageModal
+          mode="broadcast"
+          learnerSource="all"
+          onClose={() => setAnnouncing(false)}
+          onSent={(message) => {
+            setAnnouncing(false);
+            setNotice(message);
+          }}
+        />
+      ) : null}
 
       <QueryBoundary
         isLoading={query.isPending}

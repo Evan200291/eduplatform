@@ -12,7 +12,13 @@ import {
 } from '@/components/ui';
 import { QueryBoundary } from '@/components/feedback';
 import { cn } from '@/lib/cn';
-import { fetchNotifications, markNotificationRead, markNotificationsRead } from '@/notifications/notifications.api';
+import {
+  dismissNotification,
+  fetchNotifications,
+  markNotificationActioned,
+  markNotificationRead,
+  markNotificationsRead,
+} from '@/notifications/notifications.api';
 import { qk } from '@/query/keys';
 import { formatRelative } from '@/lib/format';
 import { useDocumentTitle } from '@/hooks/use-document-title';
@@ -46,6 +52,8 @@ export function StudentNotificationsPage() {
 
   const markOne = useMutation({ mutationFn: markNotificationRead, onSuccess: invalidate });
   const markAll = useMutation({ mutationFn: () => markNotificationsRead({ all: true }), onSuccess: invalidate });
+  const dismiss = useMutation({ mutationFn: dismissNotification, onSuccess: invalidate });
+  const actioned = useMutation({ mutationFn: markNotificationActioned, onSuccess: invalidate });
 
   return (
     <div className="flex flex-col gap-6">
@@ -102,7 +110,8 @@ export function StudentNotificationsPage() {
                     {note.actionPath && note.actionLabel ? (
                       <Button
                         onClick={() => {
-                          if (isUnread) markOne.mutate(note.id);
+                          // Following the link counts as acting on it (and reads it).
+                          actioned.mutate(note.id);
                           navigate(note.actionPath as string);
                         }}
                       >
@@ -114,6 +123,14 @@ export function StudentNotificationsPage() {
                         Mark read
                       </Button>
                     ) : null}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      isLoading={dismiss.isPending && dismiss.variables === note.id}
+                      onClick={() => dismiss.mutate(note.id)}
+                    >
+                      Clear
+                    </Button>
                   </div>
                 </CardBody>
               </Card>
