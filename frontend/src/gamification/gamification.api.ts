@@ -1,4 +1,4 @@
-import { apiGet, apiGetPaged, apiPost, apiPut } from '@/api';
+import { apiGet, apiGetPaged, apiPatch, apiPost, apiPut } from '@/api';
 import type { Paginated } from '@/api/types';
 import type {
   BadgeCatalogueRow,
@@ -34,13 +34,17 @@ export function fetchPointsSummary(studentId?: string): Promise<PointsSummary> {
 export function fetchPointsBalance(studentId?: string): Promise<{ studentId: string; balance: number }> {
   return apiGet('/gamification/points/balance', { params: { studentId } });
 }
+/**
+ * A teacher award. The server takes a list so a whole group can be recognised
+ * in one call, and requires a note — the learner sees why they were awarded.
+ */
 export function awardPoints(input: {
-  studentId: string;
-  reason: string;
+  studentIds: string[];
   points: number;
-  note?: string;
-}): Promise<PointsLedgerEntry> {
-  return apiPost<PointsLedgerEntry>('/gamification/points/award', input);
+  note: string;
+  reason?: 'TEACHER_AWARD' | 'MASTERY_MILESTONE' | 'STREAK_BONUS' | 'ONBOARDING_COMPLETION' | 'MANUAL_ADJUSTMENT';
+}): Promise<{ created: number; studentIds: string[] }> {
+  return apiPost('/gamification/points/award', input);
 }
 export function adjustPoints(input: {
   studentId: string;
@@ -49,8 +53,10 @@ export function adjustPoints(input: {
 }): Promise<PointsLedgerEntry> {
   return apiPost<PointsLedgerEntry>('/gamification/points/adjust', input);
 }
-export function reversePointsEntry(entryId: string): Promise<PointsLedgerEntry> {
-  return apiPost<PointsLedgerEntry>(`/gamification/points/ledger/${encodeURIComponent(entryId)}/reverse`);
+export function reversePointsEntry(entryId: string, reason: string): Promise<PointsLedgerEntry> {
+  return apiPost<PointsLedgerEntry>(`/gamification/points/ledger/${encodeURIComponent(entryId)}/reverse`, {
+    reason,
+  });
 }
 
 // ── Badges ────────────────────────────────────────────────────────────────
@@ -73,14 +79,23 @@ export function fetchBadgeProgress(studentId?: string): Promise<BadgeProgress> {
 export function createBadge(input: Record<string, unknown>): Promise<BadgeCatalogueRow> {
   return apiPost<BadgeCatalogueRow>('/gamification/badges', input);
 }
-export function awardBadge(badgeId: string, studentId: string, reason?: string): Promise<StudentBadgeAward> {
-  return apiPost<StudentBadgeAward>(`/gamification/badges/${encodeURIComponent(badgeId)}/award`, {
-    studentId,
-    reason,
-  });
+export function updateBadge(badgeId: string, input: Record<string, unknown>): Promise<BadgeCatalogueRow> {
+  return apiPatch<BadgeCatalogueRow>(`/gamification/badges/${encodeURIComponent(badgeId)}`, input);
 }
-export function revokeBadge(badgeId: string, studentId: string): Promise<void> {
-  return apiPost(`/gamification/badges/${encodeURIComponent(badgeId)}/revoke`, { studentId });
+/** Both award and revoke take a list and a reason; the reason is audited. */
+export function awardBadge(
+  badgeId: string,
+  studentIds: string[],
+  reason: string,
+): Promise<{ badgeId: string; awarded: number; alreadyHeld: number }> {
+  return apiPost(`/gamification/badges/${encodeURIComponent(badgeId)}/award`, { studentIds, reason });
+}
+export function revokeBadge(
+  badgeId: string,
+  studentIds: string[],
+  reason: string,
+): Promise<{ badgeId: string; revoked: number; pointsReversed: number }> {
+  return apiPost(`/gamification/badges/${encodeURIComponent(badgeId)}/revoke`, { studentIds, reason });
 }
 export function archiveBadge(badgeId: string): Promise<BadgeCatalogueRow> {
   return apiPost<BadgeCatalogueRow>(`/gamification/badges/${encodeURIComponent(badgeId)}/archive`);
@@ -134,10 +149,16 @@ export function equipReward(
 export function createReward(input: Record<string, unknown>): Promise<RewardCatalogueRow> {
   return apiPost<RewardCatalogueRow>('/gamification/rewards', input);
 }
-export function grantReward(rewardId: string, studentId: string): Promise<StudentRewardGrant> {
-  return apiPost<StudentRewardGrant>(`/gamification/rewards/${encodeURIComponent(rewardId)}/grant`, {
-    studentId,
-  });
+export function updateReward(rewardId: string, input: Record<string, unknown>): Promise<RewardCatalogueRow> {
+  return apiPatch<RewardCatalogueRow>(`/gamification/rewards/${encodeURIComponent(rewardId)}`, input);
+}
+/** A granted reward costs the learner nothing — recognition never depends on a balance. */
+export function grantReward(
+  rewardId: string,
+  studentIds: string[],
+  reason: string,
+): Promise<{ rewardId: string; granted: number; alreadyHeld: number }> {
+  return apiPost(`/gamification/rewards/${encodeURIComponent(rewardId)}/grant`, { studentIds, reason });
 }
 export function archiveReward(rewardId: string): Promise<RewardCatalogueRow> {
   return apiPost<RewardCatalogueRow>(`/gamification/rewards/${encodeURIComponent(rewardId)}/archive`);

@@ -49,6 +49,16 @@ import {
   type LeaderboardScope,
 } from '@/leaderboard/leaderboard.types';
 import { fetchClasses, fetchGrades, fetchSubjects } from '@/academic/academic.api';
+import type { BadgeCatalogueRow, RewardCatalogueRow } from '@/gamification/gamification.types';
+import type { MissionDefinition } from '@/missions/missions.types';
+import {
+  AwardBadgeModal,
+  EditBadgeModal,
+  EditMissionModal,
+  EditRewardModal,
+  GrantRewardModal,
+  MissionLearnersModal,
+} from './GamificationEditors';
 
 /** Points, badges, rewards, missions catalogue, and leaderboard configuration. */
 export function GamificationPage() {
@@ -92,7 +102,11 @@ function SectionCard({ title, actions, children }: { title: string; actions?: Re
 
 function BadgesSection({ canWrite }: { canWrite: boolean }) {
   const queryClient = useQueryClient();
+  const canAward = useCan('badge.award');
   const [isOpen, setOpen] = useState(false);
+  const [editing, setEditing] = useState<BadgeCatalogueRow | null>(null);
+  const [awarding, setAwarding] = useState<BadgeCatalogueRow | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const query = useQuery({
     queryKey: qk.badges.list({ page, pageSize: 10 }),
@@ -142,12 +156,22 @@ function BadgesSection({ canWrite }: { canWrite: boolean }) {
         ) : (
           <ul className="flex flex-col gap-2 text-sm">
             {query.data?.items.map((badge) => (
-              <li key={badge.id} className="flex items-center justify-between gap-2">
+              <li key={badge.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-ink">{badge.name}</span>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1">
                   <Badge tone={badge.archivedAt ? 'neutral' : 'brand'}>
                     {badge.archivedAt ? 'Archived' : badge.tier}
                   </Badge>
+                  {canAward && !badge.archivedAt ? (
+                    <Button size="sm" variant="ghost" onClick={() => setAwarding(badge)}>
+                      Award
+                    </Button>
+                  ) : null}
+                  {canWrite && !badge.archivedAt ? (
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(badge)}>
+                      Edit
+                    </Button>
+                  ) : null}
                   {canWrite && !badge.archivedAt ? (
                     <Button
                       size="sm"
@@ -166,6 +190,28 @@ function BadgesSection({ canWrite }: { canWrite: boolean }) {
         {query.data ? <Pagination meta={query.data.meta} onPageChange={setPage} className="px-0" /> : null}
       </QueryBoundary>
       {archive.error ? <ErrorState error={archive.error} /> : null}
+      {notice ? <p className="mt-2 text-sm text-ink-muted" role="status">{notice}</p> : null}
+      {editing ? (
+        <EditBadgeModal
+          badge={editing}
+          onClose={() => setEditing(null)}
+          onDone={() => {
+            setEditing(null);
+            void queryClient.invalidateQueries({ queryKey: qk.badges.list() });
+          }}
+        />
+      ) : null}
+      {awarding ? (
+        <AwardBadgeModal
+          badge={awarding}
+          source="all"
+          onClose={() => setAwarding(null)}
+          onDone={(message) => {
+            setAwarding(null);
+            setNotice(`${awarding.name}: ${message}`);
+          }}
+        />
+      ) : null}
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add a badge">
           <form
@@ -213,6 +259,9 @@ function BadgesSection({ canWrite }: { canWrite: boolean }) {
 function RewardsSection({ canWrite }: { canWrite: boolean }) {
   const queryClient = useQueryClient();
   const [isOpen, setOpen] = useState(false);
+  const [editing, setEditing] = useState<RewardCatalogueRow | null>(null);
+  const [granting, setGranting] = useState<RewardCatalogueRow | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const query = useQuery({
     queryKey: qk.rewards.list({ page, pageSize: 10 }),
@@ -260,12 +309,22 @@ function RewardsSection({ canWrite }: { canWrite: boolean }) {
         ) : (
           <ul className="flex flex-col gap-2 text-sm">
             {query.data?.items.map((reward) => (
-              <li key={reward.id} className="flex items-center justify-between gap-2">
+              <li key={reward.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-ink">{reward.name}</span>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1">
                   <span className="text-ink-muted">
                     {reward.isActive ? `${reward.pointsCost} pts` : 'Archived'}
                   </span>
+                  {canWrite && reward.isActive ? (
+                    <Button size="sm" variant="ghost" onClick={() => setGranting(reward)}>
+                      Give
+                    </Button>
+                  ) : null}
+                  {canWrite ? (
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(reward)}>
+                      Edit
+                    </Button>
+                  ) : null}
                   {canWrite && reward.isActive ? (
                     <Button
                       size="sm"
@@ -284,6 +343,27 @@ function RewardsSection({ canWrite }: { canWrite: boolean }) {
         {query.data ? <Pagination meta={query.data.meta} onPageChange={setPage} className="px-0" /> : null}
       </QueryBoundary>
       {archive.error ? <ErrorState error={archive.error} /> : null}
+      {notice ? <p className="mt-2 text-sm text-ink-muted" role="status">{notice}</p> : null}
+      {editing ? (
+        <EditRewardModal
+          reward={editing}
+          onClose={() => setEditing(null)}
+          onDone={() => {
+            setEditing(null);
+            void queryClient.invalidateQueries({ queryKey: qk.rewards.list() });
+          }}
+        />
+      ) : null}
+      {granting ? (
+        <GrantRewardModal
+          reward={granting}
+          onClose={() => setGranting(null)}
+          onDone={(message) => {
+            setGranting(null);
+            setNotice(`${granting.name}: ${message}`);
+          }}
+        />
+      ) : null}
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add a reward">
           <form
@@ -338,6 +418,8 @@ function RewardsSection({ canWrite }: { canWrite: boolean }) {
 function MissionsSection({ canWrite }: { canWrite: boolean }) {
   const queryClient = useQueryClient();
   const [isOpen, setOpen] = useState(false);
+  const [editing, setEditing] = useState<MissionDefinition | null>(null);
+  const [managing, setManaging] = useState<MissionDefinition | null>(null);
   const [page, setPage] = useState(1);
   const query = useQuery({
     queryKey: qk.missions.list({ page, pageSize: 10 }),
@@ -385,17 +467,42 @@ function MissionsSection({ canWrite }: { canWrite: boolean }) {
         ) : (
           <ul className="flex flex-col gap-2 text-sm">
             {query.data?.items.map((mission) => (
-              <li key={mission.id} className="flex items-center justify-between">
+              <li key={mission.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-ink">{mission.title}</span>
-                <Badge tone={mission.isActive ? 'success' : 'neutral'}>
-                  {mission.isActive ? 'Active' : 'Inactive'}
-                </Badge>
+                <div className="flex flex-wrap items-center gap-1">
+                  <Badge tone={mission.isActive ? 'success' : 'neutral'}>
+                    {mission.isActive ? 'Active' : 'Inactive'}
+                  </Badge>
+                  {canWrite ? (
+                    <>
+                      <Button size="sm" variant="ghost" onClick={() => setManaging(mission)}>
+                        Learners
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(mission)}>
+                        Edit
+                      </Button>
+                    </>
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>
         )}
         {query.data ? <Pagination meta={query.data.meta} onPageChange={setPage} className="px-0" /> : null}
       </QueryBoundary>
+      {editing ? (
+        <EditMissionModal
+          mission={editing}
+          onClose={() => setEditing(null)}
+          onDone={() => {
+            setEditing(null);
+            void queryClient.invalidateQueries({ queryKey: qk.missions.list() });
+          }}
+        />
+      ) : null}
+      {managing ? (
+        <MissionLearnersModal mission={managing} source="all" onClose={() => setManaging(null)} />
+      ) : null}
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add a mission">
           <form

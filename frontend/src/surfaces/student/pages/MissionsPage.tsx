@@ -18,13 +18,14 @@ import { useDocumentTitle } from '@/hooks/use-document-title';
 import { useEffect } from 'react';
 import { playAccent, stateChip } from '../play-accents';
 
-const STATUS_TONE = { NOT_STARTED: 'neutral', ACTIVE: 'brand', COMPLETED: 'success', EXPIRED: 'neutral' } as const;
+const STATUS_TONE = { NOT_STARTED: 'neutral', ACTIVE: 'brand', COMPLETED: 'success', EXPIRED: 'neutral', CANCELLED: 'neutral' } as const;
 
 const STATUS_LABEL = {
   NOT_STARTED: 'Not started',
   ACTIVE: 'In progress',
   COMPLETED: 'Complete',
   EXPIRED: 'Finished',
+  CANCELLED: 'Taken off your list',
 } as const;
 
 /**

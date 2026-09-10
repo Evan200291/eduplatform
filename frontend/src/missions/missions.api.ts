@@ -1,4 +1,4 @@
-import { apiGet, apiGetPaged, apiPost } from '@/api';
+import { apiGet, apiGetPaged, apiPatch, apiPost } from '@/api';
 import type { ListQuery, Paginated } from '@/api/types';
 import type {
   MissionDefinition,
@@ -32,6 +32,8 @@ export function acknowledgeMissionProgress(studentId?: string): Promise<{ seen: 
 
 export function fetchMissionProgress(query?: {
   missionId?: string;
+  studentId?: string;
+  pageSize?: number;
   classId?: string;
   status?: string;
 }): Promise<Paginated<MissionProgressRow>> {
@@ -50,6 +52,20 @@ export function createMission(input: Record<string, unknown>): Promise<MissionDe
 export function archiveMission(missionId: string): Promise<MissionDefinition> {
   return apiPost<MissionDefinition>(`/missions/${encodeURIComponent(missionId)}/archive`);
 }
-export function enrolInMission(missionId: string, studentId: string): Promise<MissionProgressRow> {
-  return apiPost<MissionProgressRow>(`/missions/${encodeURIComponent(missionId)}/enrol`, { studentId });
+export function updateMission(missionId: string, input: Record<string, unknown>): Promise<MissionDefinition> {
+  return apiPatch<MissionDefinition>(`/missions/${encodeURIComponent(missionId)}`, input);
+}
+export function enrolInMission(
+  missionId: string,
+  studentIds: string[],
+): Promise<{ missionId: string; requested: number; enrolled: number }> {
+  return apiPost(`/missions/${encodeURIComponent(missionId)}/enrol`, { studentIds });
+}
+/** Withdrawing a mission from named learners. The reason is required and audited. */
+export function cancelMissionForStudents(
+  missionId: string,
+  studentIds: string[],
+  reason: string,
+): Promise<{ missionId: string; cancelled: number }> {
+  return apiPost(`/missions/${encodeURIComponent(missionId)}/cancel`, { studentIds, reason });
 }

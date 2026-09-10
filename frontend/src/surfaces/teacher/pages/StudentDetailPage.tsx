@@ -32,6 +32,7 @@ import { formatDate, formatDateTime, formatDuration, formatRelative } from '@/li
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { humanize, toneFor } from '../lib/humanize';
 import type { StudentNavState } from '../lib/nav-state';
+import { RecognitionActions, StudentMissionsCard } from './StudentRecognition';
 
 const MASTERY_TONE = {
   NOT_ASSESSED: 'neutral',
@@ -250,8 +251,13 @@ function StudentDetail({ studentId }: { studentId: string }) {
                 </div>
               ) : null}
             </QueryBoundary>
+            <div className="mt-4">
+              <RecognitionActions studentId={studentId} displayName={displayName} />
+            </div>
           </CardBody>
         </Card>
+
+        <StudentMissionsCard studentId={studentId} className="lg:col-span-2" />
 
         {navState.classId ? (
           <Card className="lg:col-span-2">

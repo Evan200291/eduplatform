@@ -5,7 +5,7 @@ export type GoalType =
   | 'ASSIGNMENTS_ON_TIME'
   | 'ACCURACY_PERCENT'
   | 'STREAK_DAYS';
-export type MissionStatus = 'NOT_STARTED' | 'ACTIVE' | 'COMPLETED' | 'EXPIRED';
+export type MissionStatus = 'NOT_STARTED' | 'ACTIVE' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED';
 
 export interface MissionDefinition {
   id: string;
