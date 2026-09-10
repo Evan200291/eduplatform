@@ -1,8 +1,9 @@
-import { apiGet, apiGetPaged, apiPatch, apiPost } from '@/api';
+import { apiDeleteReturning, apiGet, apiGetPaged, apiPatch, apiPost, apiPut } from '@/api';
 import type { Paginated } from '@/api/types';
 import type {
   CompleteItemResult,
   LearningPath,
+  PathItem,
   RecommendationListQuery,
   RecommendationRecord,
 } from './learning.types';
@@ -73,6 +74,54 @@ export function updatePathItem(
     `/learning-paths/${encodeURIComponent(pathId)}/items/${encodeURIComponent(itemId)}`,
     input,
   );
+}
+
+// ── Restructuring a path ────────────────────────────────────────────────────
+
+/**
+ * PRD v2.5: teachers may adjust authorised learners' paths. Pacing edits
+ * existed; restructuring did not — a step could not be added, dropped or moved
+ * without regenerating the whole path and losing the teacher's adjustments.
+ *
+ * Removal takes a reason because the server keeps the step as history ("what
+ * was planned, and why it was dropped") rather than deleting it. Axios sends a
+ * DELETE body through `data`, which is why the reason rides in the config.
+ */
+
+export function addPathItem(
+  pathId: string,
+  input: {
+    topicId?: string;
+    lessonId?: string;
+    activityId?: string;
+    assessmentId?: string;
+    sortOrder?: number;
+    isRequired?: boolean;
+    dueAt?: string;
+    reason?: string;
+  },
+): Promise<PathItem> {
+  return apiPost<PathItem>(`/learning-paths/${encodeURIComponent(pathId)}/items`, input);
+}
+
+export function removePathItem(pathId: string, itemId: string, reason: string): Promise<PathItem> {
+  return apiDeleteReturning<PathItem>(
+    `/learning-paths/${encodeURIComponent(pathId)}/items/${encodeURIComponent(itemId)}`,
+    { data: { reason } },
+  );
+}
+
+/** Whole-list reorder — every step with its new position. */
+export function reorderPathItems(
+  pathId: string,
+  items: { id: string; sortOrder: number }[],
+): Promise<PathItem[]> {
+  return apiPut<PathItem[]>(`/learning-paths/${encodeURIComponent(pathId)}/items/reorder`, { items });
+}
+
+/** Re-checks prerequisites and unlocks any step whose requirements are now secure. */
+export function refreshPathUnlocks(pathId: string): Promise<LearningPath> {
+  return apiPost<LearningPath>(`/learning-paths/${encodeURIComponent(pathId)}/refresh-unlocks`);
 }
 
 // ── Recommendations (teacher approval queue) ─────────────────────────────────
