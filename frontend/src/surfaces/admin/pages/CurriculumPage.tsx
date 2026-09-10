@@ -44,6 +44,7 @@ import type { ContentStatus } from '@/content/content.types';
 import { CONTENT_STATUS_MOVE_LABEL, CONTENT_STATUS_TONE, nextContentStatuses } from '@/content/content-lifecycle';
 import { LessonSectionsEditor } from './LessonSectionsEditor';
 import { QuestionsEditor } from './QuestionsEditor';
+import { ActivityDetailsModal } from './ActivityDetailsModal';
 import { EditNodeModal, MoveButtons, ObjectivesModal, PrerequisitesModal } from './CurriculumEditors';
 import type { CurriculumProgram, CurriculumTopic, CurriculumUnit } from '@/curriculum/curriculum.types';
 
@@ -601,6 +602,7 @@ function ActivitiesCard({
   const queryClient = useQueryClient();
   const [isOpen, setOpen] = useState(false);
   const [questionsFor, setQuestionsFor] = useState<{ id: string; title: string } | null>(null);
+  const [detailsFor, setDetailsFor] = useState<{ id: string; title: string; topicId: string } | null>(null);
   const query = useQuery({ queryKey: qk.activities.list(), queryFn: () => fetchActivities({ pageSize: 20 }) });
 
   const create = useMutation({
@@ -648,6 +650,13 @@ function ActivitiesCard({
                 >
                   Questions
                 </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setDetailsFor({ id: activity.id, title: activity.title, topicId: activity.topicId })}
+                >
+                  Objectives
+                </Button>
                 <LifecycleControl
                   status={activity.status}
                   canWrite={canWrite}
@@ -660,6 +669,9 @@ function ActivitiesCard({
           </ul>
         )}
       </QueryBoundary>
+      {detailsFor ? (
+        <ActivityDetailsModal activity={detailsFor} canWrite={canWrite} onClose={() => setDetailsFor(null)} />
+      ) : null}
       {questionsFor ? (
         <QuestionsEditor
           activityId={questionsFor.id}

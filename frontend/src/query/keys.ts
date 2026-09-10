@@ -67,6 +67,7 @@ export const qk = {
     detail: (id: string) => ['activities', 'detail', id] as const,
     delivery: (id: string) => ['activities', 'delivery', id] as const,
     questions: (activityId: string) => ['activities', 'questions', activityId] as const,
+    versions: (activityId: string) => ['activities', 'detail', activityId, 'versions'] as const,
   },
   assignments: {
     all: ['assignments'] as const,

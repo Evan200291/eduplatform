@@ -3,6 +3,7 @@ import { env } from '@/lib/env';
 import type { Paginated } from '@/api/types';
 import type {
   ActivityDelivery,
+  ActivityVersionRow,
   ActivityListQuery,
   ActivityStaffDetail,
   ActivitySummary,
@@ -374,4 +375,18 @@ export function deleteMedia(mediaId: string): Promise<void> {
 
 export function restoreMedia(mediaId: string): Promise<MediaRecord> {
   return apiPost<MediaRecord>(`/media/${encodeURIComponent(mediaId)}/restore`);
+}
+
+// ── Activity versions and objective links ────────────────────────────────────
+
+export function fetchActivityVersions(activityId: string): Promise<ActivityVersionRow[]> {
+  return apiGet<ActivityVersionRow[]>(`/activities/${encodeURIComponent(activityId)}/versions`);
+}
+
+/** Replaces the activity's objective links; objectives must belong to its topic. */
+export function setActivityObjectives(
+  activityId: string,
+  objectives: { objectiveId: string; weight: number }[],
+): Promise<unknown> {
+  return apiPut(`/activities/${encodeURIComponent(activityId)}/objectives`, { objectives });
 }

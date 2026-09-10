@@ -176,6 +176,7 @@ export interface ActivityStaffDetail extends ActivitySummary {
   questions: (DeliveryQuestion & {
     options: (QuestionOption & { isCorrect?: boolean })[];
   })[];
+  objectiveLinks?: ActivityObjectiveLink[];
 }
 
 // ── Governance: content reports and moderation (blueprint §05 safety) ────────
@@ -471,4 +472,24 @@ export interface UpdateMediaInput {
   licenseNote?: string;
   attribution?: string;
   isPublic?: boolean;
+}
+
+/** `GET /activities/:id/versions` — one row per saved version, newest first. */
+export interface ActivityVersionRow {
+  id: string;
+  activityId: string;
+  version: number;
+  status: ContentStatus;
+  changeSummary: string | null;
+  invalidatesPriorEvidence: boolean;
+  createdAt: string;
+  publishedAt: string | null;
+  createdById: string | null;
+}
+
+/** The objective links on the staff activity view (`objectiveLinks`). */
+export interface ActivityObjectiveLink {
+  objectiveId: string;
+  weight: number;
+  objective: { id: string; code: string; statement: string };
 }
