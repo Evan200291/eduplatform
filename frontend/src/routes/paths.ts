@@ -78,6 +78,7 @@ export const paths = {
     features: '/admin/features',
     analytics: '/admin/analytics',
     billing: '/admin/billing',
+    agreements: '/admin/agreements',
     audit: '/admin/audit',
     settings: '/admin/settings',
   },

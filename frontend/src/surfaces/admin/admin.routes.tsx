@@ -6,6 +6,7 @@ import { AdminSurface } from './AdminSurface';
 import {
   AcademicPage,
   AdminOverviewPage,
+  AgreementsPage,
   AnalyticsPage,
   AssessmentPage,
   AuditPage,
@@ -161,6 +162,10 @@ export const ADMIN_ROUTES: readonly RouteObject[] = [
           {
             element: <RequirePermission anyOf={['platform.overview.read', 'platform.jobs.read']} />,
             children: [{ path: 'platform', element: <PlatformOpsPage /> }],
+          },
+          {
+            element: <RequirePermission anyOf={['subscription.write']} />,
+            children: [{ path: 'agreements', element: <AgreementsPage /> }],
           },
           {
             element: <RequirePermission anyOf={['organization.read']} />,

@@ -1,11 +1,15 @@
 import { apiGet, apiGetPaged, apiPatch, apiPost } from '@/api';
 import type { Paginated } from '@/api/types';
 import type {
+  CancelSubscriptionInput,
+  CreateSubscriptionInput,
   CurrentSubscription,
   PlanPackaging,
   SeatUsage,
   SubscriptionDetail,
   SubscriptionListQuery,
+  RenewSubscriptionInput,
+  SubscriptionTermsInput,
 } from './subscription.types';
 
 /**
@@ -42,27 +46,27 @@ export function fetchSubscriptionPackaging(id: string): Promise<PlanPackaging> {
   return apiGet<PlanPackaging>(`/subscriptions/${encodeURIComponent(id)}/packaging`);
 }
 
-export function createSubscription(input: Record<string, unknown>): Promise<SubscriptionDetail> {
+export function createSubscription(input: CreateSubscriptionInput): Promise<SubscriptionDetail> {
   return apiPost<SubscriptionDetail>('/subscriptions', input);
 }
 
 export function updateSubscription(
   id: string,
-  input: Record<string, unknown>,
+  input: Partial<SubscriptionTermsInput>,
 ): Promise<SubscriptionDetail> {
   return apiPatch<SubscriptionDetail>(`/subscriptions/${encodeURIComponent(id)}`, input);
 }
 
 export function cancelSubscription(
   id: string,
-  input: Record<string, unknown>,
+  input: CancelSubscriptionInput,
 ): Promise<SubscriptionDetail> {
   return apiPost<SubscriptionDetail>(`/subscriptions/${encodeURIComponent(id)}/cancel`, input);
 }
 
 export function renewSubscription(
   id: string,
-  input: Record<string, unknown>,
+  input: RenewSubscriptionInput,
 ): Promise<SubscriptionDetail> {
   return apiPost<SubscriptionDetail>(`/subscriptions/${encodeURIComponent(id)}/renew`, input);
 }

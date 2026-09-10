@@ -157,6 +157,12 @@ export const ADMIN_NAV: readonly NavSection[] = [
       },
       { to: paths.admin.schools, label: 'Schools', icon: IconSchool, anyOf: ['school.create'] },
       {
+        to: paths.admin.agreements,
+        label: 'Agreements',
+        icon: IconBilling,
+        anyOf: ['subscription.write'],
+      },
+      {
         to: paths.admin.platformOps,
         label: 'Operations',
         icon: IconPlatform,

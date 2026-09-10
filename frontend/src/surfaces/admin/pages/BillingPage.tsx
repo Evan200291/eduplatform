@@ -17,7 +17,8 @@ import { QueryBoundary } from '@/components/feedback';
 import { qk } from '@/query/keys';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { formatDate, formatNumber } from '@/lib/format';
-import { fetchCurrentSubscription } from '@/subscription/subscription.api';
+import { fetchCurrentSubscription, fetchPlans } from '@/subscription/subscription.api';
+import { PlanComparison } from './AgreementsPage';
 import type { SubscriptionState } from '@/subscription/subscription.types';
 
 /** A short label + tone for the subscription's derived lifecycle state. */
@@ -35,6 +36,7 @@ export function BillingPage() {
 
   const query = useQuery({ queryKey: qk.subscriptions.current, queryFn: fetchCurrentSubscription });
   const data = query.data;
+  const plans = useQuery({ queryKey: qk.plans.all, queryFn: fetchPlans });
 
   return (
     <div className="flex flex-col gap-6">
@@ -133,6 +135,16 @@ export function BillingPage() {
           )
         ) : null}
       </QueryBoundary>
+
+      {plans.data && plans.data.plans.length > 0 ? (
+        <PlanComparison plans={plans.data.plans} current={data?.subscription?.plan ?? null} />
+      ) : null}
+      {plans.data ? (
+        <p className="text-sm text-ink-muted">
+          To change plan or seats, raise a support request under Billing or subscription — plans are changed by
+          Midas billing staff, not from this page.
+        </p>
+      ) : null}
     </div>
   );
 }

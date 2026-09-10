@@ -114,3 +114,46 @@ export interface SubscriptionListQuery extends ListQuery {
   schoolId?: string;
   expiringWithinDays?: number;
 }
+
+/** Mirrors `subscriptionTerms` in `subscription.validation.ts`. Money is integer minor units. */
+export interface SubscriptionTermsInput {
+  plan: SubscriptionPlan;
+  status?: SubscriptionStatus;
+  interval?: BillingInterval;
+  licensedStudentSeats?: number;
+  licensedTeacherSeats?: number;
+  pricePerStudentMinor?: number | null;
+  pricePerTeacherMinor?: number | null;
+  currency?: string;
+  startsAt: string;
+  endsAt?: string | null;
+  trialEndsAt?: string | null;
+  renewsAt?: string | null;
+  autoRenew?: boolean;
+  purchaseOrderRef?: string;
+  invoiceEmail?: string;
+  notes?: string;
+}
+
+export interface CreateSubscriptionInput extends SubscriptionTermsInput {
+  organizationId?: string;
+  schoolId?: string;
+}
+
+export interface CancelSubscriptionInput {
+  reason: string;
+  effectiveAt?: string;
+  immediate?: boolean;
+}
+
+export interface RenewSubscriptionInput {
+  plan?: SubscriptionPlan;
+  interval?: BillingInterval;
+  endsAt: string;
+  renewsAt?: string | null;
+  licensedStudentSeats?: number;
+  licensedTeacherSeats?: number;
+  pricePerStudentMinor?: number | null;
+  pricePerTeacherMinor?: number | null;
+  changeSummary?: string;
+}

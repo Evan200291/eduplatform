@@ -8,6 +8,7 @@
 
 export { AcademicPage } from './AcademicPage';
 export { AdminOverviewPage } from './AdminOverviewPage';
+export { AgreementsPage } from './AgreementsPage';
 export { AnalyticsPage } from './AnalyticsPage';
 export { AssessmentPage } from './AssessmentPage';
 export { AuditPage } from './AuditPage';
