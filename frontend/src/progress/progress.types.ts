@@ -51,15 +51,40 @@ export interface ProgressListQuery extends ListQuery {
   topicId?: string;
 }
 
+export type NoteKind = 'OBSERVATION' | 'INTERVENTION' | 'ASSESSMENT_JUDGMENT' | 'PARENT_COMMUNICATION' | 'ADMINISTRATIVE';
+export type NoteVisibility = 'PRIVATE_TEACHER' | 'AUTHORIZED_STAFF' | 'SCHOOL_RECORD' | 'PARENT_VISIBLE';
+export type NoteSensitivity = 'ROUTINE' | 'SENSITIVE' | 'SAFEGUARDING';
+
+/** Mirrors `NOTE_SELECT` in `notes.service.ts`. */
 export interface TeacherNote {
   id: string;
   studentId: string;
   authorId: string;
+  kind: NoteKind;
+  visibility: NoteVisibility;
+  sensitivity: NoteSensitivity;
+  title: string | null;
   body: string;
-  visibility: 'PRIVATE_TEACHER' | 'AUTHORIZED_STAFF' | 'SCHOOL_RECORD' | 'PARENT_VISIBLE';
-  isSensitive: boolean;
+  followUpDueAt: string | null;
+  followUpDoneAt: string | null;
+  escalatedAt: string | null;
+  escalatedToId: string | null;
+  withdrawnAt: string | null;
+  withdrawnById: string | null;
+  withdrawReason: string | null;
   createdAt: string;
-  author: { id: string; displayName: string };
+  updatedAt: string;
+  author: { id: string; displayName: string; primaryRole: string };
+}
+
+export interface NoteInput {
+  kind?: NoteKind;
+  visibility?: NoteVisibility;
+  sensitivity?: NoteSensitivity;
+  title?: string;
+  body?: string;
+  followUpDueAt?: string;
+  followUpDone?: boolean;
 }
 
 /** Mirrors `JUDGMENT_SELECT` in `progress.service.ts` — a teacher's recorded judgment. */

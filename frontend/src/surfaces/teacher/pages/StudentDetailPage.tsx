@@ -1,31 +1,23 @@
-import { useState } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   Avatar,
   Badge,
-  Button,
   ButtonLink,
   Card,
   CardBody,
-  CardFooter,
   CardHeader,
   EmptyState,
-  Field,
   IconBack,
   PageHeader,
   ProgressBar,
-  Select,
-  Textarea,
-  type SelectOption,
 } from '@/components/ui';
-import { QueryBoundary, ErrorState } from '@/components/feedback';
+import { QueryBoundary } from '@/components/feedback';
 import { useCan } from '@/auth';
 import { fetchStudentMastery, fetchAttempts } from '@/assessment/assessment.api';
-import { fetchProgressSummary, fetchStudentNotes, createStudentNote } from '@/progress/progress.api';
+import { fetchProgressSummary } from '@/progress/progress.api';
 import { fetchGamificationProfile } from '@/gamification/gamification.api';
 import { fetchAssignments } from '@/assignments/assignments.api';
-import type { TeacherNote } from '@/progress/progress.types';
 import { qk } from '@/query/keys';
 import { paths } from '@/routes/paths';
 import { formatDate, formatDateTime, formatDuration, formatRelative } from '@/lib/format';
@@ -34,6 +26,7 @@ import { humanize, toneFor } from '../lib/humanize';
 import type { StudentNavState } from '../lib/nav-state';
 import { RecognitionActions, StudentMissionsCard } from './StudentRecognition';
 import { ChangeMasteryButton, TeacherJudgmentsCard } from './StudentMasteryTools';
+import { NotesCard } from './StudentNotes';
 
 const MASTERY_TONE = {
   NOT_ASSESSED: 'neutral',
@@ -42,13 +35,6 @@ const MASTERY_TONE = {
   PROFICIENT: 'success',
   MASTERED: 'brand',
 } as const;
-
-const VISIBILITY_OPTIONS: SelectOption[] = [
-  { value: 'PRIVATE_TEACHER', label: 'Only me' },
-  { value: 'AUTHORIZED_STAFF', label: 'Authorized staff' },
-  { value: 'SCHOOL_RECORD', label: 'School record' },
-  { value: 'PARENT_VISIBLE', label: 'Visible to parent (when parent access is enabled)' },
-];
 
 /** One student: mastery, progress, evidence, class work, gamification and notes. */
 export function StudentDetailPage() {
@@ -319,89 +305,5 @@ function Stat({ label, value }: { label: string; value: string | number }) {
       <span className="text-ink-muted">{label}</span>
       <span className="font-medium text-ink">{value}</span>
     </div>
-  );
-}
-
-function NotesCard({
-  studentId,
-  canWrite,
-  className,
-}: {
-  studentId: string;
-  canWrite: boolean;
-  className?: string;
-}) {
-  const queryClient = useQueryClient();
-  const [body, setBody] = useState('');
-  const [visibility, setVisibility] = useState<TeacherNote['visibility']>('PRIVATE_TEACHER');
-
-  const notesQuery = useQuery({
-    queryKey: qk.progress.notes(studentId),
-    queryFn: () => fetchStudentNotes(studentId),
-  });
-
-  const createNote = useMutation({
-    mutationFn: () => createStudentNote({ studentId, body: body.trim(), visibility }),
-    onSuccess: () => {
-      setBody('');
-      void queryClient.invalidateQueries({ queryKey: qk.progress.notes(studentId) });
-    },
-  });
-
-  return (
-    <Card className={className}>
-      <CardHeader title="Notes" description="Your record of what you have observed." />
-      <CardBody className="p-0">
-        <QueryBoundary
-          isLoading={notesQuery.isPending}
-          error={notesQuery.error}
-          onRetry={() => void notesQuery.refetch()}
-          isEmpty={(notesQuery.data?.items.length ?? 0) === 0}
-          emptyState={<EmptyState title="No notes yet" className="border-none py-6" />}
-        >
-          <ul className="divide-y divide-line">
-            {(notesQuery.data?.items ?? []).map((note) => (
-              <li key={note.id} className="flex flex-col gap-1 px-4 py-3 text-sm">
-                <p className="text-ink">{note.body}</p>
-                <div className="flex items-center gap-2 text-xs text-ink-muted">
-                  <span>{note.author.displayName}</span>
-                  <span>&middot;</span>
-                  <span>{formatDateTime(note.createdAt)}</span>
-                  <Badge tone="neutral">{humanize(note.visibility)}</Badge>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </QueryBoundary>
-      </CardBody>
-      {canWrite ? (
-        <CardFooter className="flex-col items-stretch gap-3">
-          {createNote.error ? <ErrorState error={createNote.error} /> : null}
-          <Field label="Add a note" isLabelHidden>
-            <Textarea
-              placeholder="What did you observe?"
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-            />
-          </Field>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Field label="Visibility" isLabelHidden className="w-48">
-              <Select
-                options={VISIBILITY_OPTIONS}
-                value={visibility}
-                onChange={(event) => setVisibility(event.target.value as TeacherNote['visibility'])}
-              />
-            </Field>
-            <Button
-              onClick={() => createNote.mutate()}
-              isLoading={createNote.isPending}
-              disabled={body.trim().length === 0}
-            >
-              Save note
-            </Button>
-          </div>
-        </CardFooter>
-      ) : null}
-    </Card>
   );
 }

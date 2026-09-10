@@ -28,6 +28,7 @@ import { QueryBoundary } from '@/components/feedback';
 import { useCan, useProfile } from '@/auth';
 import { fetchTeacherDashboard } from '@/dashboard/dashboard.api';
 import { fetchMyClasses } from '@/academic/academic.api';
+import { fetchNoteSummary } from '@/progress/progress.api';
 import type { AttentionEntry } from '@/dashboard/dashboard.types';
 import { qk } from '@/query/keys';
 import { paths } from '@/routes/paths';
@@ -54,7 +55,16 @@ export function TeacherDashboardPage() {
     queryFn: () => fetchTeacherDashboard({ classId: classId || undefined, attentionLimit: 8 }),
   });
 
+  const canReadNotes = useCan('note.read');
+  const notesSummary = useQuery({
+    queryKey: qk.progress.noteSummary,
+    queryFn: fetchNoteSummary,
+    enabled: canReadNotes,
+  });
+
   const data = dashboardQuery.data;
+  const notes = notesSummary.data;
+  const hasNoteWork = notes ? notes.followUpOverdue + notes.followUpUpcoming + notes.escalatedOpen > 0 : false;
   const firstName = profile?.nickname ?? profile?.firstName ?? '';
 
   return (
@@ -127,6 +137,20 @@ export function TeacherDashboardPage() {
                 to={paths.teach.notifications}
               />
             </div>
+
+            {notes && hasNoteWork ? (
+              <p className="rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink" role="status">
+                <span className="font-medium">Your notes: </span>
+                {notes.followUpOverdue > 0 ? (
+                  <span className="font-medium text-danger-strong">{notes.followUpOverdue} follow-up{notes.followUpOverdue === 1 ? '' : 's'} overdue</span>
+                ) : (
+                  <span>no follow-ups overdue</span>
+                )}
+                {' · '}
+                {notes.followUpUpcoming} coming up
+                {notes.escalatedOpen > 0 ? ` · ${notes.escalatedOpen} escalated note${notes.escalatedOpen === 1 ? '' : 's'} open` : ''}
+              </p>
+            ) : null}
 
             <div className="grid gap-6 lg:grid-cols-3">
               <Card className="lg:col-span-2">

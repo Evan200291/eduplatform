@@ -3,6 +3,7 @@ import type { Paginated } from '@/api/types';
 import type { MasteryRecord } from '@/assessment/assessment.types';
 import type {
   ClassProgress,
+  NoteInput,
   ProgressListQuery,
   ProgressRecord,
   ProgressSummary,
@@ -49,12 +50,35 @@ export function fetchStudentNotes(studentId: string): Promise<Paginated<TeacherN
   return apiGetPaged<TeacherNote>('/notes', { studentId });
 }
 
-export function createStudentNote(input: {
-  studentId: string;
-  body: string;
-  visibility: TeacherNote['visibility'];
-}): Promise<TeacherNote> {
+export function createStudentNote(input: NoteInput & { studentId: string; body: string }): Promise<TeacherNote> {
   return apiPost<TeacherNote>('/notes', input);
+}
+
+export function updateStudentNote(noteId: string, input: NoteInput): Promise<TeacherNote> {
+  return apiPatch<TeacherNote>(`/notes/${encodeURIComponent(noteId)}`, input);
+}
+
+/** Blueprint 04: a note is withdrawn with a reason, never deleted. */
+export function withdrawStudentNote(noteId: string, reason: string): Promise<TeacherNote> {
+  return apiPost<TeacherNote>(`/notes/${encodeURIComponent(noteId)}/withdraw`, { reason });
+}
+
+/**
+ * Blueprint 04: "Safeguarding notes are escalated rather than shared." The
+ * recipient is named so responsibility is never implicit.
+ */
+export function escalateStudentNote(noteId: string, escalatedToId: string, note?: string): Promise<TeacherNote> {
+  return apiPost<TeacherNote>(`/notes/${encodeURIComponent(noteId)}/escalate`, { escalatedToId, note });
+}
+
+/** The author's own follow-up counts, for the teacher dashboard. */
+export function fetchNoteSummary(): Promise<{
+  followUpOverdue: number;
+  followUpUpcoming: number;
+  escalatedOpen: number;
+  authored: number;
+}> {
+  return apiGet('/notes/summary');
 }
 
 export function createTeacherAssessment(input: {
