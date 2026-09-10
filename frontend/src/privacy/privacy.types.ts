@@ -200,3 +200,21 @@ export interface AuditSummary {
   topActions: Array<{ action: string; count: number }>;
   busiestActors: Array<{ actorUserId: string; displayName: string; count: number }>;
 }
+
+/** `POST /data-requests/:id/build-export` — the manifest to read before sending anything. */
+export interface SubjectExportManifest {
+  storageKey: string;
+  fileName: string;
+  byteSize: number;
+  checksumSha256: string;
+  sections: { key: string; label: string; rowCount: number; truncated: boolean }[];
+  withheld: { key: string; label: string; rowCount: number; reason: string }[];
+}
+
+/** `GET /consent/effective` — the basis relied on for one purpose, and where it comes from. */
+export interface EffectiveBasis {
+  basis: LawfulBasis | null;
+  granted: boolean | null;
+  level: 'LEARNER' | 'SCHOOL' | 'NONE';
+  recordedAt: string | null;
+}

@@ -261,6 +261,15 @@ export const qk = {
     summary: ['support', 'summary'] as const,
     policies: ['support', 'policies'] as const,
   },
+  privacy: {
+    all: ['privacy'] as const,
+    requests: (params?: unknown) => ['privacy', 'requests', params ?? {}] as const,
+    summary: ['privacy', 'summary'] as const,
+    register: ['privacy', 'register'] as const,
+    purposes: ['privacy', 'purposes'] as const,
+    consent: (params?: unknown) => ['privacy', 'consent', params ?? {}] as const,
+    effective: (purpose: string, userId?: string) => ['privacy', 'effective', purpose, userId ?? 'school'] as const,
+  },
   media: {
     all: ['media'] as const,
     list: (params?: unknown) => ['media', 'list', params ?? {}] as const,

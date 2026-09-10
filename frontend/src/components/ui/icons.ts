@@ -76,6 +76,7 @@ export {
   Flag as IconModeration,
   Copyright as IconOwnership,
   Images as IconMedia,
+  FileLock as IconPrivacy,
   Activity as IconPlatform,
 
   // Accessibility and preferences

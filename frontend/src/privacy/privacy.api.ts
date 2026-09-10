@@ -1,4 +1,4 @@
-import { apiGet, apiGetPaged, apiPatch, apiPost, apiPut } from '@/api';
+import { apiGet, apiGetPaged, apiPatch, apiPost, apiPut, fetchAuthorizedBlob, saveBlob } from '@/api';
 import type { Paginated } from '@/api/types';
 import type {
   AuditDetailRow,
@@ -11,11 +11,13 @@ import type {
   DataRequestListQuery,
   DataRequestRow,
   DataRequestSummary,
+  EffectiveBasis,
   ProcessingPurpose,
   RetentionClassOption,
   RetentionListQuery,
   RetentionPolicyRow,
   RetentionRunOutcome,
+  SubjectExportManifest,
 } from './privacy.types';
 
 /**
@@ -51,14 +53,23 @@ export function transitionDataRequest(
 ): Promise<DataRequestRow> {
   return apiPost<DataRequestRow>(`/data-requests/${encodeURIComponent(id)}/status`, input);
 }
-export function buildSubjectExport(id: string): Promise<unknown> {
-  return apiPost(`/data-requests/${encodeURIComponent(id)}/build-export`);
+export function buildSubjectExport(id: string): Promise<SubjectExportManifest> {
+  return apiPost<SubjectExportManifest>(`/data-requests/${encodeURIComponent(id)}/build-export`);
+}
+/** The built file. Bytes, not the JSON envelope, so it is fetched with the bearer token. */
+export async function downloadSubjectExport(id: string): Promise<void> {
+  const { blob, fileName } = await fetchAuthorizedBlob(`/data-requests/${encodeURIComponent(id)}/export`);
+  saveBlob(blob, fileName ?? 'subject-access.json');
 }
 
 // ── Consent and lawful basis ────────────────────────────────────────────────
 
 export function fetchProcessingPurposes(): Promise<ProcessingPurpose[]> {
   return apiGet<ProcessingPurpose[]>('/consent/purposes');
+}
+/** "What are we relying on for this purpose, for this learner, right now?" */
+export function fetchEffectiveBasis(purpose: string, userId?: string): Promise<EffectiveBasis> {
+  return apiGet<EffectiveBasis>('/consent/effective', { params: { purpose, ...(userId ? { userId } : {}) } });
 }
 export function fetchConsentRegister(): Promise<ConsentRegisterEntry[]> {
   return apiGet<ConsentRegisterEntry[]>('/consent/register');

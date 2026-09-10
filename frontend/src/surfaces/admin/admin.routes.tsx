@@ -17,6 +17,7 @@ import {
   ModerationPage,
   ContentRightsPage,
   MediaLibraryPage,
+  PrivacyPage,
   OrganizationDetailPage,
   OrganizationsPage,
   PlatformOpsPage,
@@ -146,6 +147,10 @@ export const ADMIN_ROUTES: readonly RouteObject[] = [
               {
                 element: <RequirePermission anyOf={['media.read']} />,
                 children: [{ path: 'media', element: <MediaLibraryPage /> }],
+              },
+              {
+                element: <RequirePermission anyOf={['datarequest.read', 'consent.read']} />,
+                children: [{ path: 'privacy', element: <PrivacyPage /> }],
               },
               {
                 element: <RequirePermission anyOf={['support.create', 'support.read.all']} />,

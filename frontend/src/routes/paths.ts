@@ -70,6 +70,7 @@ export const paths = {
     moderation: '/admin/moderation',
     contentRights: '/admin/content-ownership',
     media: '/admin/media',
+    privacy: '/admin/privacy',
     support: '/admin/support',
     assessment: '/admin/assessment',
     gamification: '/admin/gamification',
