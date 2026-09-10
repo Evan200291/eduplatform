@@ -102,3 +102,25 @@ export interface RunReportParams {
   to?: string;
   limit?: number;
 }
+
+/** Mirrors `createReportDefinitionSchema` — the honesty notes are at least a sentence each. */
+export interface ReportDefinitionInput {
+  key: string;
+  name: string;
+  description?: string;
+  scopeLevel: ReportDefinition['scopeLevel'];
+  audience: string[];
+  measureNotes: string;
+  limitationNotes: string;
+  evidenceSources: string[];
+  /** `{ baseReport: '<standard key>' }` names the query a custom report runs on. */
+  configuration?: { baseReport: string };
+}
+
+export type UpdateReportDefinitionInput = Partial<Omit<ReportDefinitionInput, 'key'>> & { isActive?: boolean };
+
+export interface ReportExportListQuery extends ListQuery {
+  definitionId?: string;
+  mineOnly?: boolean;
+  includeExpired?: boolean;
+}

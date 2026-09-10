@@ -4,11 +4,14 @@ import { session } from '@/api';
 import type { Paginated } from '@/api/types';
 import type {
   ReportDefinition,
+  ReportDefinitionInput,
   ReportExportJob,
+  ReportExportListQuery,
   ReportListQuery,
   ReportRunResult,
   RunReportParams,
   StandardReportCatalogueEntry,
+  UpdateReportDefinitionInput,
 } from './reporting.types';
 
 /** Reports — teacher's class/student summaries, admin's school-wide analytics. */
@@ -25,11 +28,11 @@ export function fetchReportDefinition(id: string): Promise<ReportDefinition> {
   return apiGet<ReportDefinition>(`/reports/definitions/${encodeURIComponent(id)}`);
 }
 
-export function createReportDefinition(input: Record<string, unknown>): Promise<ReportDefinition> {
+export function createReportDefinition(input: ReportDefinitionInput): Promise<ReportDefinition> {
   return apiPost<ReportDefinition>('/reports/definitions', input);
 }
 
-export function updateReportDefinition(id: string, input: Record<string, unknown>): Promise<ReportDefinition> {
+export function updateReportDefinition(id: string, input: UpdateReportDefinitionInput): Promise<ReportDefinition> {
   return apiPatch<ReportDefinition>(`/reports/definitions/${encodeURIComponent(id)}`, input);
 }
 
@@ -62,8 +65,8 @@ export function requestReportExport(input: {
   return apiPost<ReportExportJob>('/reports/exports', input);
 }
 
-export function fetchReportExports(): Promise<Paginated<ReportExportJob>> {
-  return apiGetPaged<ReportExportJob>('/reports/exports');
+export function fetchReportExports(query?: ReportExportListQuery): Promise<Paginated<ReportExportJob>> {
+  return apiGetPaged<ReportExportJob>('/reports/exports', query);
 }
 
 export function fetchReportExportStatus(exportId: string): Promise<ReportExportJob> {

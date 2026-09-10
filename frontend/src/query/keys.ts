@@ -125,6 +125,7 @@ export const qk = {
     catalogue: ['reports', 'catalogue'] as const,
     run: (idOrKey: string, params?: unknown) => ['reports', 'run', idOrKey, params ?? {}] as const,
     exports: ['reports', 'exports'] as const,
+    exportList: (params?: unknown) => ['reports', 'exports', 'list', params ?? {}] as const,
   },
   dashboard: {
     student: ['dashboard', 'student'] as const,
