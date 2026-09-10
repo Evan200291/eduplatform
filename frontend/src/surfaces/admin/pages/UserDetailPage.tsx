@@ -29,6 +29,7 @@ import { assignRole, fetchUser, resetUserCredentials, revokeRole, setUserStatus 
 import type { RoleAssignmentRow } from '@/users/users.types';
 import { ROLE_KEYS, ROLE_SCOPE_TYPES } from '@/types/enums';
 import { adjustPoints, fetchMyStreaks, fetchPointsBalance, freezeStreak } from '@/gamification/gamification.api';
+import { EditUserModal } from './UserEditors';
 
 const STREAK_KIND_OPTIONS = [
   { value: 'DAILY_LEARNING', label: 'Daily learning' },
@@ -59,6 +60,8 @@ export function UserDetailPage() {
   const canResetCredentials = useCan('user.credentials.reset');
   const canAssignRole = useCan('role.assign');
   const canRevokeRole = useCan('role.revoke');
+  const canEdit = useCan('user.update');
+  const [isEditOpen, setEditOpen] = useState(false);
 
   const [isStatusOpen, setStatusOpen] = useState(false);
   const [isResetOpen, setResetOpen] = useState(false);
@@ -133,6 +136,11 @@ export function UserDetailPage() {
         actions={
           user ? (
             <>
+              {canEdit ? (
+                <Button variant="outline" onClick={() => setEditOpen(true)}>
+                  Edit details
+                </Button>
+              ) : null}
               {canResetCredentials ? (
                 <Button variant="outline" onClick={() => setResetOpen(true)}>
                   Reset credentials
@@ -207,6 +215,17 @@ export function UserDetailPage() {
               </CardBody>
             </Card>
 
+            {user.groupMemberships.length > 0 ? (
+              <Card>
+                <CardHeader title="Groups" />
+                <CardBody className="flex flex-wrap gap-2">
+                  {user.groupMemberships.map((membership) => (
+                    <Badge key={membership.group.id}>{membership.group.name}</Badge>
+                  ))}
+                </CardBody>
+              </Card>
+            ) : null}
+
             {user.primaryRole === 'STUDENT' ? <GamificationCard studentId={user.id} /> : null}
           </div>
         ) : null}
@@ -219,6 +238,16 @@ export function UserDetailPage() {
           onClose={() => setStatusOpen(false)}
           onDone={() => {
             setStatusOpen(false);
+            invalidate();
+          }}
+        />
+      ) : null}
+      {user && isEditOpen ? (
+        <EditUserModal
+          user={user}
+          onClose={() => setEditOpen(false)}
+          onDone={() => {
+            setEditOpen(false);
             invalidate();
           }}
         />

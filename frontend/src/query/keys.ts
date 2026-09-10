@@ -32,6 +32,9 @@ export const qk = {
     all: ['users'] as const,
     list: (params?: unknown) => ['users', 'list', params ?? {}] as const,
     detail: (id: string) => ['users', 'detail', id] as const,
+    invitations: (params?: unknown) => ['users', 'invitations', params ?? {}] as const,
+    groups: (params?: unknown) => ['users', 'groups', params ?? {}] as const,
+    group: (id: string) => ['users', 'group', id] as const,
   },
   roles: {
     permissions: ['roles', 'permissions'] as const,

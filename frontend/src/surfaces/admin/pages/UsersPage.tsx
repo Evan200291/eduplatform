@@ -30,6 +30,7 @@ import { paths } from '@/routes/paths';
 import { bulkCreateStudents, createInvitation, createUser, fetchUsers } from '@/users/users.api';
 import type { BulkStudentResult, UserSummary } from '@/users/users.types';
 import { ROLE_KEYS } from '@/types/enums';
+import { GroupsCard, InvitationsCard } from './UserEditors';
 
 const STATUS_TONE: Record<string, BadgeTone> = {
   ACTIVE: 'success',
@@ -50,6 +51,8 @@ function roleLabel(role: string): string {
  * learners, and jump into one account's detail.
  */
 export function UsersPage() {
+  const canReadInvitations = useCan('invitation.read');
+  const canReadGroups = useCan('usergroup.read');
   useDocumentTitle('Users');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -221,6 +224,11 @@ export function UsersPage() {
           ) : null}
         </QueryBoundary>
       </Card>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {canReadInvitations ? <InvitationsCard /> : null}
+        {canReadGroups ? <GroupsCard /> : null}
+      </div>
 
       {isInviteOpen ? (
         <InviteModal onClose={() => setInviteOpen(false)} onDone={invalidate} />
