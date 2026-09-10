@@ -17,6 +17,7 @@ export { CurriculumPage } from './CurriculumPage';
 export { FeaturesPage } from './FeaturesPage';
 export { GamificationPage } from './GamificationPage';
 export { ModerationPage } from './ModerationPage';
+export { ContentRightsPage } from './ContentRightsPage';
 export { OrganizationDetailPage } from './OrganizationDetailPage';
 export { OrganizationsPage } from './OrganizationsPage';
 export { PlatformOpsPage } from './PlatformOpsPage';

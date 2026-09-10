@@ -10,6 +10,7 @@ import {
   IconHome,
   IconModeration,
   IconOrganization,
+  IconOwnership,
   IconPlatform,
   IconRoles,
   IconSafety,
@@ -116,6 +117,12 @@ export const ADMIN_NAV: readonly NavSection[] = [
         label: 'Moderation',
         icon: IconModeration,
         anyOf: ['content.report.review'],
+      },
+      {
+        to: paths.admin.contentRights,
+        label: 'Content ownership',
+        icon: IconOwnership,
+        anyOf: ['content.ownership.read'],
       },
       {
         to: paths.admin.audit,

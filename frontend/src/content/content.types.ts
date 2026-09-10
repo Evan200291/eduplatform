@@ -350,3 +350,66 @@ export interface LessonSectionInput {
   kind?: ActivityType;
   sortOrder?: number;
 }
+
+// ── Ownership and publication history (blueprint 05, 12) ─────────────────────
+
+
+/** Mirrors `ContentOwnershipRecord` — one row per target, upserted. */
+export interface OwnershipRecord {
+  id: string;
+  schoolId: string;
+  targetType: ContentTargetType;
+  targetId: string;
+  ownership: ContentOwnership;
+  licenseHolder: string | null;
+  licenseReference: string | null;
+  licenseStartsAt: string | null;
+  licenseEndsAt: string | null;
+  canRedistribute: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdById: string | null;
+}
+
+export interface OwnershipListQuery extends ListQuery {
+  targetType?: ContentTargetType;
+  ownership?: ContentOwnership;
+}
+
+export interface SetOwnershipInput {
+  targetType: ContentTargetType;
+  targetId: string;
+  ownership: ContentOwnership;
+  licenseHolder?: string;
+  licenseReference?: string;
+  licenseStartsAt?: string;
+  licenseEndsAt?: string;
+  canRedistribute: boolean;
+  notes?: string;
+}
+
+/** Mirrors `ContentPublication` with its lesson/activity included. */
+export interface PublicationRecord {
+  id: string;
+  lessonId: string | null;
+  activityId: string | null;
+  version: number;
+  status: ContentStatus;
+  changeSummary: string | null;
+  reviewNotes: string | null;
+  reviewedById: string | null;
+  publishedById: string | null;
+  effectiveFrom: string;
+  publishedAt: string | null;
+  retiredAt: string | null;
+  createdAt: string;
+  lesson: { id: string; title: string } | null;
+  activity: { id: string; title: string; type: ActivityType } | null;
+}
+
+export interface PublicationListQuery extends ListQuery {
+  lessonId?: string;
+  activityId?: string;
+  status?: ContentStatus;
+}

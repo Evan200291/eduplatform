@@ -1,4 +1,4 @@
-import { apiDeleteReturning, apiGet, apiGetPaged, apiPatch, apiPost, apiUpload } from '@/api';
+import { apiDeleteReturning, apiGet, apiGetPaged, apiPatch, apiPost, apiPut, apiUpload } from '@/api';
 import { env } from '@/lib/env';
 import type { Paginated } from '@/api/types';
 import type {
@@ -24,6 +24,11 @@ import type {
   ModerationDecision,
   ModerationReviewListQuery,
   ModerationReviewRow,
+  OwnershipListQuery,
+  OwnershipRecord,
+  PublicationListQuery,
+  PublicationRecord,
+  SetOwnershipInput,
   QuestionInput,
   QuestionRow,
   ResolveContentReportInput,
@@ -310,4 +315,21 @@ export function reorderLessonSections(
   return apiPost<LessonSection[]>(`/lessons/${encodeURIComponent(lessonId)}/sections/reorder`, {
     items,
   });
+}
+
+// ── Ownership and licensing (blueprint 05) ───────────────────────────────────
+
+export function fetchOwnershipRecords(query?: OwnershipListQuery): Promise<Paginated<OwnershipRecord>> {
+  return apiGetPaged<OwnershipRecord>('/content-ownership', query);
+}
+
+/** Upsert on (targetType, targetId): recording a second time replaces the first. */
+export function setOwnershipRecord(input: SetOwnershipInput): Promise<OwnershipRecord> {
+  return apiPut<OwnershipRecord>('/content-ownership', input);
+}
+
+// ── Publication history (blueprint 12) ───────────────────────────────────────
+
+export function fetchPublications(query?: PublicationListQuery): Promise<Paginated<PublicationRecord>> {
+  return apiGetPaged<PublicationRecord>('/content-publications', query);
 }

@@ -68,6 +68,7 @@ export const paths = {
     academic: '/admin/academic',
     curriculum: '/admin/curriculum',
     moderation: '/admin/moderation',
+    contentRights: '/admin/content-ownership',
     support: '/admin/support',
     assessment: '/admin/assessment',
     gamification: '/admin/gamification',

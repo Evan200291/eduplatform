@@ -74,6 +74,7 @@ export {
   ToggleRight as IconFeatures,
   ScrollText as IconAudit,
   Flag as IconModeration,
+  Copyright as IconOwnership,
   Activity as IconPlatform,
 
   // Accessibility and preferences
