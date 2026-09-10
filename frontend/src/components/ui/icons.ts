@@ -75,6 +75,7 @@ export {
   ScrollText as IconAudit,
   Flag as IconModeration,
   Copyright as IconOwnership,
+  Images as IconMedia,
   Activity as IconPlatform,
 
   // Accessibility and preferences

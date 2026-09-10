@@ -260,6 +260,11 @@ export const qk = {
     summary: ['support', 'summary'] as const,
     policies: ['support', 'policies'] as const,
   },
+  media: {
+    all: ['media'] as const,
+    list: (params?: unknown) => ['media', 'list', params ?? {}] as const,
+    usage: ['media', 'usage'] as const,
+  },
   contentRights: {
     all: ['content-rights'] as const,
     ownership: (params?: unknown) => ['content-rights', 'ownership', params ?? {}] as const,

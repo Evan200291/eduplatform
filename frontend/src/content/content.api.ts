@@ -1,4 +1,4 @@
-import { apiDeleteReturning, apiGet, apiGetPaged, apiPatch, apiPost, apiPut, apiUpload } from '@/api';
+import { apiDelete, apiDeleteReturning, apiGet, apiGetPaged, apiPatch, apiPost, apiPut, apiUpload } from '@/api';
 import { env } from '@/lib/env';
 import type { Paginated } from '@/api/types';
 import type {
@@ -21,6 +21,9 @@ import type {
   LessonSectionInput,
   LessonSummary,
   MediaAsset,
+  MediaListQuery,
+  MediaRecord,
+  MediaUsage,
   ModerationDecision,
   ModerationReviewListQuery,
   ModerationReviewRow,
@@ -29,6 +32,7 @@ import type {
   PublicationListQuery,
   PublicationRecord,
   SetOwnershipInput,
+  UpdateMediaInput,
   QuestionInput,
   QuestionRow,
   ResolveContentReportInput,
@@ -108,12 +112,20 @@ export function publishActivity(activityId: string): Promise<ActivityStaffDetail
  */
 export function uploadMedia(
   file: File,
-  meta: { altText?: string; isPublic?: boolean; ownership?: ContentOwnership },
+  meta: {
+    altText?: string;
+    caption?: string;
+    transcript?: string;
+    isPublic?: boolean;
+    ownership?: ContentOwnership;
+  },
   onProgress?: (percent: number) => void,
 ): Promise<MediaAsset> {
   const form = new FormData();
   form.append('file', file);
   if (meta.altText) form.append('altText', meta.altText);
+  if (meta.caption) form.append('caption', meta.caption);
+  if (meta.transcript) form.append('transcript', meta.transcript);
   if (meta.ownership) form.append('ownership', meta.ownership);
   form.append('isPublic', meta.isPublic ? 'true' : 'false');
   return apiUpload<MediaAsset>('/media', form, onProgress);
@@ -332,4 +344,34 @@ export function setOwnershipRecord(input: SetOwnershipInput): Promise<OwnershipR
 
 export function fetchPublications(query?: PublicationListQuery): Promise<Paginated<PublicationRecord>> {
   return apiGetPaged<PublicationRecord>('/content-publications', query);
+}
+
+// ── Media library ────────────────────────────────────────────────────────────
+
+export function fetchMedia(query?: MediaListQuery): Promise<Paginated<MediaRecord>> {
+  return apiGetPaged<MediaRecord>('/media', query);
+}
+
+export function fetchMediaUsage(): Promise<MediaUsage> {
+  return apiGet<MediaUsage>('/media/usage');
+}
+
+export function updateMedia(mediaId: string, input: UpdateMediaInput): Promise<MediaRecord> {
+  return apiPatch<MediaRecord>(`/media/${encodeURIComponent(mediaId)}`, input);
+}
+
+export function moderateMedia(
+  mediaId: string,
+  input: { decision: ModerationDecision; notes?: string },
+): Promise<MediaRecord> {
+  return apiPost<MediaRecord>(`/media/${encodeURIComponent(mediaId)}/moderate`, input);
+}
+
+/** Soft delete: the file is kept and can be restored. */
+export function deleteMedia(mediaId: string): Promise<void> {
+  return apiDelete(`/media/${encodeURIComponent(mediaId)}`);
+}
+
+export function restoreMedia(mediaId: string): Promise<MediaRecord> {
+  return apiPost<MediaRecord>(`/media/${encodeURIComponent(mediaId)}/restore`);
 }

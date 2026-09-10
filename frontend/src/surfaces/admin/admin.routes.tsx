@@ -16,6 +16,7 @@ import {
   GamificationPage,
   ModerationPage,
   ContentRightsPage,
+  MediaLibraryPage,
   OrganizationDetailPage,
   OrganizationsPage,
   PlatformOpsPage,
@@ -141,6 +142,10 @@ export const ADMIN_ROUTES: readonly RouteObject[] = [
               {
                 element: <RequirePermission anyOf={['content.ownership.read']} />,
                 children: [{ path: 'content-ownership', element: <ContentRightsPage /> }],
+              },
+              {
+                element: <RequirePermission anyOf={['media.read']} />,
+                children: [{ path: 'media', element: <MediaLibraryPage /> }],
               },
               {
                 element: <RequirePermission anyOf={['support.create', 'support.read.all']} />,

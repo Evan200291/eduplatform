@@ -413,3 +413,62 @@ export interface PublicationListQuery extends ListQuery {
   activityId?: string;
   status?: ContentStatus;
 }
+
+// ── Media library (blueprint 07 accessibility, 09 storage) ───────────────────
+
+export type MediaKind = 'IMAGE' | 'AUDIO' | 'VIDEO' | 'DOCUMENT' | 'ANIMATION' | 'ARCHIVE';
+
+/** Mirrors `MEDIA_SELECT` in `media.service.ts`. */
+export interface MediaRecord {
+  id: string;
+  schoolId: string | null;
+  kind: MediaKind;
+  fileName: string;
+  originalFileName: string;
+  mimeType: string;
+  byteSize: number;
+  width: number | null;
+  height: number | null;
+  durationSeconds: number | null;
+  altText: string | null;
+  caption: string | null;
+  transcript: string | null;
+  ownership: ContentOwnership;
+  licenseNote: string | null;
+  attribution: string | null;
+  moderationDecision: ModerationDecision;
+  moderatedAt: string | null;
+  moderatedById: string | null;
+  isPublic: boolean;
+  uploadedById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface MediaListQuery extends ListQuery {
+  kind?: MediaKind;
+  moderationDecision?: ModerationDecision;
+  ownership?: ContentOwnership;
+  includeDeleted?: boolean;
+  includePlatformLibrary?: boolean;
+}
+
+export interface MediaUsage {
+  assetCount: number;
+  recordedBytes: number;
+  storedBytes: number;
+  maxUploadBytes: number;
+  byKind: { kind: MediaKind; assetCount: number; bytes: number }[];
+}
+
+export interface UpdateMediaInput {
+  fileName?: string;
+  altText?: string;
+  caption?: string;
+  transcript?: string;
+  ownership?: ContentOwnership;
+  licenseNote?: string;
+  attribution?: string;
+  isPublic?: boolean;
+}

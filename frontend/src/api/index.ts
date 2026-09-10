@@ -10,6 +10,7 @@ export { http } from './http';
 export { session, type SessionEnded } from './session';
 export { ApiError, toApiError } from './error';
 export { refreshAccessToken } from './refresh';
+export { fetchAuthorizedBlob, saveBlob } from './download';
 export {
   apiGet,
   apiGetPaged,

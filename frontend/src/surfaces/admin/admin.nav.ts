@@ -8,6 +8,7 @@ import {
   IconGamification,
   IconGrade,
   IconHome,
+  IconMedia,
   IconModeration,
   IconOrganization,
   IconOwnership,
@@ -58,6 +59,12 @@ export const ADMIN_NAV: readonly NavSection[] = [
         label: 'Curriculum',
         icon: IconCurriculum,
         anyOf: ['curriculum.read'],
+      },
+      {
+        to: paths.admin.media,
+        label: 'Media library',
+        icon: IconMedia,
+        anyOf: ['media.read'],
       },
       {
         to: paths.admin.assessment,
