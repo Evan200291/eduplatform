@@ -36,7 +36,6 @@ import {
   createLesson,
   fetchActivities,
   fetchLessons,
-  publishActivity,
   setActivityStatus,
   setLessonStatus,
 } from '@/content/content.api';
@@ -45,6 +44,7 @@ import { CONTENT_STATUS_MOVE_LABEL, CONTENT_STATUS_TONE, nextContentStatuses } f
 import { LessonSectionsEditor } from './LessonSectionsEditor';
 import { QuestionsEditor } from './QuestionsEditor';
 import { ActivityDetailsModal } from './ActivityDetailsModal';
+import { EditActivityModal, EditLessonModal, PublishActivityModal } from './ContentEditors';
 import { EditNodeModal, MoveButtons, ObjectivesModal, PrerequisitesModal } from './CurriculumEditors';
 import type { CurriculumProgram, CurriculumTopic, CurriculumUnit } from '@/curriculum/curriculum.types';
 
@@ -516,6 +516,7 @@ function LessonsCard({
   const queryClient = useQueryClient();
   const [isOpen, setOpen] = useState(false);
   const [sectionsFor, setSectionsFor] = useState<{ id: string; title: string } | null>(null);
+  const [editingLesson, setEditingLesson] = useState<string | null>(null);
   const query = useQuery({ queryKey: qk.lessons.list(), queryFn: () => fetchLessons({ pageSize: 20 }) });
 
   const create = useMutation({
@@ -556,6 +557,11 @@ function LessonsCard({
                 >
                   Sections
                 </Button>
+                {canWrite ? (
+                  <Button size="sm" variant="ghost" onClick={() => setEditingLesson(lesson.id)}>
+                    Edit
+                  </Button>
+                ) : null}
                 <LifecycleControl
                   status={lesson.status}
                   canWrite={canWrite}
@@ -568,6 +574,7 @@ function LessonsCard({
           </ul>
         )}
       </QueryBoundary>
+      {editingLesson ? <EditLessonModal lessonId={editingLesson} onClose={() => setEditingLesson(null)} /> : null}
       {sectionsFor ? (
         <LessonSectionsEditor
           lessonId={sectionsFor.id}
@@ -603,6 +610,8 @@ function ActivitiesCard({
   const [isOpen, setOpen] = useState(false);
   const [questionsFor, setQuestionsFor] = useState<{ id: string; title: string } | null>(null);
   const [detailsFor, setDetailsFor] = useState<{ id: string; title: string; topicId: string } | null>(null);
+  const [editingActivity, setEditingActivity] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState<{ id: string; title: string; currentVersion: number } | null>(null);
   const query = useQuery({ queryKey: qk.activities.list(), queryFn: () => fetchActivities({ pageSize: 20 }) });
 
   const create = useMutation({
@@ -619,8 +628,7 @@ function ActivitiesCard({
    * move through the dedicated endpoint; every other move uses the generic one.
    */
   const move = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: ContentStatus }) =>
-      status === 'PUBLISHED' ? publishActivity(id) : setActivityStatus(id, status),
+    mutationFn: ({ id, status }: { id: string; status: ContentStatus }) => setActivityStatus(id, status),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: qk.activities.all }),
   });
 
@@ -657,18 +665,39 @@ function ActivitiesCard({
                 >
                   Objectives
                 </Button>
+                {canWrite ? (
+                  <Button size="sm" variant="ghost" onClick={() => setEditingActivity(activity.id)}>
+                    Edit
+                  </Button>
+                ) : null}
                 <LifecycleControl
                   status={activity.status}
                   canWrite={canWrite}
                   isPending={move.isPending && move.variables?.id === activity.id}
                   error={move.variables?.id === activity.id ? move.error : undefined}
-                  onMove={(status) => move.mutate({ id: activity.id, status })}
+                  onMove={(status) =>
+                    // Publishing asks what changed first; see PublishActivityModal.
+                    status === 'PUBLISHED'
+                      ? setPublishing({ id: activity.id, title: activity.title, currentVersion: activity.currentVersion })
+                      : move.mutate({ id: activity.id, status })
+                  }
                 />
               </li>
             ))}
           </ul>
         )}
       </QueryBoundary>
+      {editingActivity ? <EditActivityModal activityId={editingActivity} onClose={() => setEditingActivity(null)} /> : null}
+      {publishing ? (
+        <PublishActivityModal
+          activity={publishing}
+          onClose={() => setPublishing(null)}
+          onDone={() => {
+            setPublishing(null);
+            void queryClient.invalidateQueries({ queryKey: qk.activities.all });
+          }}
+        />
+      ) : null}
       {detailsFor ? (
         <ActivityDetailsModal activity={detailsFor} canWrite={canWrite} onClose={() => setDetailsFor(null)} />
       ) : null}

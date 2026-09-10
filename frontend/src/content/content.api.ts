@@ -99,8 +99,11 @@ export function setActivityStatus(activityId: string, status: string): Promise<A
   });
 }
 
-export function publishActivity(activityId: string): Promise<ActivityStaffDetail> {
-  return apiPost<ActivityStaffDetail>(`/activities/${encodeURIComponent(activityId)}/publish`);
+export function publishActivity(
+  activityId: string,
+  input: { changeSummary?: string; invalidatesPriorEvidence?: boolean; reviewNotes?: string } = {},
+): Promise<ActivityStaffDetail> {
+  return apiPost<ActivityStaffDetail>(`/activities/${encodeURIComponent(activityId)}/publish`, input);
 }
 
 /**
