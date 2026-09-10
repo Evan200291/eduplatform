@@ -8,6 +8,7 @@ import type {
   AssessmentItem,
   AssessmentKind,
   AttemptListQuery,
+  AttemptResponse,
   CreateAssessmentInput,
   NextItemResult,
   StudentMastery,
@@ -162,4 +163,23 @@ export function fetchStudentMastery(studentId: string, subjectId?: string): Prom
   return apiGet<StudentMastery>(`/topic-evaluations/students/${encodeURIComponent(studentId)}/mastery`, {
     params: subjectId ? { subjectId } : undefined,
   });
+}
+
+/** Every answer in one attempt, with its marking — the staff review view. */
+export function fetchAttemptResponses(
+  attemptId: string,
+  query?: { onlyIncorrect?: boolean; pageSize?: number },
+): Promise<Paginated<AttemptResponse>> {
+  return apiGetPaged<AttemptResponse>(`/assessment-attempts/${encodeURIComponent(attemptId)}/responses`, query);
+}
+
+/**
+ * A teacher re-marking one answer. The note is required: an automatic mark
+ * changed by hand must say why. Omitting points gives full or no marks.
+ */
+export function overrideResponse(
+  responseId: string,
+  input: { isCorrect: boolean; pointsAwarded?: number; note: string },
+): Promise<AttemptResponse> {
+  return apiPost<AttemptResponse>(`/assessment-responses/${encodeURIComponent(responseId)}/override`, input);
 }

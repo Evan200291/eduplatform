@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Avatar,
   Badge,
+  Button,
   ButtonLink,
   Card,
   CardBody,
@@ -27,6 +29,8 @@ import type { StudentNavState } from '../lib/nav-state';
 import { RecognitionActions, StudentMissionsCard } from './StudentRecognition';
 import { ChangeMasteryButton, TeacherJudgmentsCard } from './StudentMasteryTools';
 import { NotesCard } from './StudentNotes';
+import { AttemptReviewModal } from './AttemptReview';
+import type { AssessmentAttempt } from '@/assessment/assessment.types';
 
 const MASTERY_TONE = {
   NOT_ASSESSED: 'neutral',
@@ -52,6 +56,7 @@ function StudentDetail({ studentId }: { studentId: string }) {
 
   const canReadNotes = useCan('note.read');
   const canWriteNotes = useCan('note.write');
+  const [reviewing, setReviewing] = useState<AssessmentAttempt | null>(null);
 
   const masteryQuery = useQuery({
     queryKey: qk.assessment.mastery(studentId),
@@ -206,6 +211,9 @@ function StudentDetail({ studentId }: { studentId: string }) {
                       <Badge tone={attempt.status === 'COMPLETED' ? 'success' : 'neutral'}>
                         {humanize(attempt.status)}
                       </Badge>
+                      <Button size="sm" variant="ghost" onClick={() => setReviewing(attempt)}>
+                        Review
+                      </Button>
                     </div>
                   </li>
                 ))}
@@ -289,6 +297,10 @@ function StudentDetail({ studentId }: { studentId: string }) {
               </QueryBoundary>
             </CardBody>
           </Card>
+        ) : null}
+
+        {reviewing ? (
+          <AttemptReviewModal attempt={reviewing} studentId={studentId} onClose={() => setReviewing(null)} />
         ) : null}
 
         {canReadNotes ? (

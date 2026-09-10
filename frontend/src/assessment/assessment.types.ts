@@ -187,3 +187,25 @@ export interface AttemptListQuery extends ListQuery {
   assessmentId?: string;
   status?: AttemptStatus;
 }
+
+/** `GET /assessment-attempts/:id/responses` row — what the learner answered, and how it was marked. */
+export interface AttemptResponse {
+  id: string;
+  questionId: string;
+  activityId: string;
+  activityVersionId: string;
+  response: unknown;
+  isCorrect: boolean | null;
+  pointsAwarded: number;
+  pointsPossible: number;
+  hintsUsed: number;
+  attemptsUsed: number;
+  timeSpentSeconds: number;
+  difficultyBand: DifficultyBand;
+  teacherOverridden: boolean;
+  teacherOverrideNote: string | null;
+  overriddenById: string | null;
+  overriddenAt: string | null;
+  answeredAt: string;
+  question: { id: string; prompt: string; type: string; sortOrder: number };
+}

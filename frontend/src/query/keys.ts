@@ -137,6 +137,8 @@ export const qk = {
     definition: (id: string) => ['assessment', 'definition', id] as const,
     attempts: (params?: unknown) => ['assessment', 'attempts', params ?? {}] as const,
     attempt: (id: string) => ['assessment', 'attempt', id] as const,
+    responses: (attemptId: string, params?: unknown) =>
+      ['assessment', 'attempt', attemptId, 'responses', params ?? {}] as const,
     nextItem: (attemptId: string) => ['assessment', 'next-item', attemptId] as const,
     mastery: (studentId: string, subjectId?: string) =>
       ['assessment', 'mastery', studentId, subjectId ?? 'all'] as const,
