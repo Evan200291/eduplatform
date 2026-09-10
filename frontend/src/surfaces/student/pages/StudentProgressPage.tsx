@@ -23,9 +23,9 @@ import { fetchProgressSummary } from '@/progress/progress.api';
 import { fetchGamificationProfile } from '@/gamification/gamification.api';
 import { fetchStudentMastery } from '@/assessment/assessment.api';
 import { fetchMyWork } from '@/assignments/assignments.api';
+import { SetWorkList } from '../components/SetWork';
 import type { MasteryLevel } from '@/assessment/assessment.types';
 import { qk } from '@/query/keys';
-import { formatRelative } from '@/lib/format';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { playAccent } from '../play-accents';
 
@@ -205,30 +205,7 @@ export function StudentProgressPage() {
               />
             }
           >
-            <div className="flex flex-col gap-2">
-              {myWorkQuery.data?.upcoming.slice(0, 5).map((attempt) => {
-                const isOverdue = attempt.state === 'OVERDUE';
-                return (
-                  <div
-                    key={attempt.id}
-                    className={cn(
-                      'flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3',
-                      isOverdue ? 'bg-danger-soft' : 'bg-surface-sunken',
-                    )}
-                  >
-                    <div>
-                      <p className="font-medium text-ink">{attempt.assignment.title}</p>
-                      <p className="text-sm text-ink-muted">
-                        {attempt.assignment.dueAt ? `Due ${formatRelative(attempt.assignment.dueAt)}` : 'No due date'}
-                      </p>
-                    </div>
-                    <Badge tone={isOverdue ? 'danger' : 'neutral'} variant={isOverdue ? 'solid' : 'soft'}>
-                      {attempt.state.replace('_', ' ').toLowerCase()}
-                    </Badge>
-                  </div>
-                );
-              })}
-            </div>
+            <SetWorkList attempts={myWorkQuery.data?.upcoming ?? []} />
           </QueryBoundary>
         </CardBody>
       </Card>

@@ -75,6 +75,7 @@ export const qk = {
     detail: (id: string) => ['assignments', 'detail', id] as const,
     myWork: ['assignments', 'my-work'] as const,
     monitor: (id: string) => ['assignments', 'monitor', id] as const,
+    content: (workType: string, subjectId: string) => ['assignments', 'content', workType, subjectId] as const,
   },
   learningPaths: {
     all: ['learning-paths'] as const,

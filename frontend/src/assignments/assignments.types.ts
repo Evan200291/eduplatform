@@ -4,13 +4,15 @@ import type { ListQuery } from '@/api/types';
 
 export type AssignmentKind = 'LESSON' | 'ACTIVITY' | 'QUIZ' | 'ASSESSMENT' | 'MISSION' | 'HOMEWORK' | 'TASK';
 export type AssignmentState = 'NOT_STARTED' | 'IN_PROGRESS' | 'SUBMITTED' | 'COMPLETED' | 'OVERDUE' | 'EXCUSED';
-export type LateBehavior = 'ALLOW' | 'FLAG' | 'BLOCK';
+/** Mirrors the Prisma `LateBehavior` enum. */
+export type LateBehavior = 'BLOCK_AFTER_DUE' | 'ALLOW_LATE_FLAGGED' | 'ALLOW_LATE_SILENT' | 'ALLOW_UNTIL_GRACE_END';
 
 export interface Assignment {
   id: string;
   title: string;
   instructions: string | null;
   kind: AssignmentKind;
+  availableFrom: string | null;
   dueAt: string | null;
   pointsValue: number;
   lateBehavior: LateBehavior;

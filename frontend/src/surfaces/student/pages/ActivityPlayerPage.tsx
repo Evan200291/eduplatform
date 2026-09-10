@@ -9,6 +9,7 @@ import type { SubmitAttemptResult } from '@/assessment/assessment.types';
 import { fetchActivityDelivery } from '@/content/content.api';
 import type { ActivityDelivery } from '@/content/content.types';
 import { completePathItem } from '@/learning/learning.api';
+import { submitAssignment } from '@/assignments/assignments.api';
 import { qk } from '@/query/keys';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { paths } from '@/routes/paths';
@@ -38,6 +39,11 @@ import { TeacherTaskActivity } from '../components/TeacherTaskActivity';
  *
  * `?pathId=&itemId=` are attached whenever this activity is a step on the
  * learner's path, so finishing it can unlock the next step.
+ *
+ * `?assignmentId=` is attached when a teacher set this as work (`SetWork`).
+ * Finishing then hands the work in: a graded attempt submits with its score
+ * and links the assessment evidence, so the assignment completes itself; an
+ * ungraded activity is handed in without a score and waits for the teacher.
  */
 export function ActivityPlayerPage() {
   const { activityId = '' } = useParams<{ activityId: string }>();
@@ -45,12 +51,15 @@ export function ActivityPlayerPage() {
   const kind = searchParams.get('kind') === 'activity' ? 'activity' : 'assessment';
   const pathId = searchParams.get('pathId');
   const itemId = searchParams.get('itemId');
+  const assignmentId = searchParams.get('assignmentId');
   const navigate = useNavigate();
+  // Set work returns to the list it was started from.
+  const onExit = () => navigate(assignmentId ? paths.learn.progress : paths.learn.activities);
 
   return kind === 'activity' ? (
-    <ActivityOnlyPlayer activityId={activityId} pathId={pathId} itemId={itemId} onExit={() => navigate(paths.learn.activities)} />
+    <ActivityOnlyPlayer activityId={activityId} pathId={pathId} itemId={itemId} assignmentId={assignmentId} onExit={onExit} />
   ) : (
-    <AssessmentActivityPlayer activityId={activityId} pathId={pathId} itemId={itemId} onExit={() => navigate(paths.learn.activities)} />
+    <AssessmentActivityPlayer activityId={activityId} pathId={pathId} itemId={itemId} assignmentId={assignmentId} onExit={onExit} />
   );
 }
 
@@ -58,10 +67,11 @@ interface PlayerProps {
   activityId: string;
   pathId: string | null;
   itemId: string | null;
+  assignmentId: string | null;
   onExit: () => void;
 }
 
-function AssessmentActivityPlayer({ activityId, pathId, itemId, onExit }: PlayerProps) {
+function AssessmentActivityPlayer({ activityId, pathId, itemId, assignmentId, onExit }: PlayerProps) {
   const queryClient = useQueryClient();
   const [result, setResult] = useState<SubmitAttemptResult | null>(null);
 
@@ -76,6 +86,15 @@ function AssessmentActivityPlayer({ activityId, pathId, itemId, onExit }: Player
     onSuccess: () => {
       if (pathId) void queryClient.invalidateQueries({ queryKey: qk.learningPaths.detail(pathId) });
     },
+  });
+
+  const handIn = useMutation({
+    mutationFn: (finalResult: SubmitAttemptResult) =>
+      submitAssignment(assignmentId as string, {
+        scorePercent: finalResult.scorePercent,
+        assessmentAttemptId: finalResult.attemptId,
+      }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: qk.assignments.myWork }),
   });
 
   useDocumentTitle(assessmentQuery.data?.title ?? 'Activity');
@@ -104,6 +123,7 @@ function AssessmentActivityPlayer({ activityId, pathId, itemId, onExit }: Player
             onComplete={(finalResult) => {
               setResult(finalResult);
               if (pathId && itemId) completeStep.mutate();
+              if (assignmentId) handIn.mutate(finalResult);
             }}
           />
         ) : (
@@ -136,6 +156,17 @@ function AssessmentActivityPlayer({ activityId, pathId, itemId, onExit }: Player
                   ? 'Great work — that shows real progress.'
                   : 'Good effort — every attempt helps you learn. You can try again from your learning list.'}
               </p>
+              {assignmentId ? (
+                handIn.isError ? (
+                  <p className="text-sm text-danger-strong" role="alert">
+                    Your answers are saved, but handing the work in did not go through. Ask your teacher to check it.
+                  </p>
+                ) : handIn.isSuccess ? (
+                  <p className="text-sm text-ink-muted" role="status">
+                    Handed in to your teacher.
+                  </p>
+                ) : null
+              ) : null}
               <Button size="lg" onClick={onExit}>
                 Continue learning
               </Button>
@@ -147,7 +178,7 @@ function AssessmentActivityPlayer({ activityId, pathId, itemId, onExit }: Player
   );
 }
 
-function ActivityOnlyPlayer({ activityId, pathId, itemId, onExit }: PlayerProps) {
+function ActivityOnlyPlayer({ activityId, pathId, itemId, assignmentId, onExit }: PlayerProps) {
   const queryClient = useQueryClient();
   const [done, setDone] = useState(false);
 
@@ -157,18 +188,23 @@ function ActivityOnlyPlayer({ activityId, pathId, itemId, onExit }: PlayerProps)
     enabled: Boolean(activityId),
   });
 
+  // One "I'm done" can finish a path step, hand in set work, or both.
   const completeStep = useMutation({
-    mutationFn: () => completePathItem(pathId as string, itemId as string),
+    mutationFn: async () => {
+      if (pathId && itemId) await completePathItem(pathId, itemId);
+      if (assignmentId) await submitAssignment(assignmentId, {});
+    },
     onSuccess: () => {
       setDone(true);
       if (pathId) void queryClient.invalidateQueries({ queryKey: qk.learningPaths.detail(pathId) });
+      if (assignmentId) void queryClient.invalidateQueries({ queryKey: qk.assignments.myWork });
     },
   });
 
   useDocumentTitle(activityQuery.data?.title ?? 'Activity');
 
   const activity = activityQuery.data;
-  const canComplete = Boolean(pathId && itemId);
+  const canComplete = Boolean((pathId && itemId) || assignmentId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -200,7 +236,9 @@ function ActivityOnlyPlayer({ activityId, pathId, itemId, onExit }: PlayerProps)
                 </span>
                 <p className={cn(text.heading, 'text-2xl')}>Done!</p>
                 <p className="max-w-prose leading-body text-ink">
-                  Nice work — that&apos;s marked complete.
+                  {assignmentId
+                    ? 'Nice work — that’s handed in to your teacher.'
+                    : 'Nice work — that’s marked complete.'}
                 </p>
                 <Button size="lg" onClick={onExit}>
                   Continue learning

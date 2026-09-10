@@ -16,13 +16,17 @@ import {
   PageHeader,
   Pagination,
   Select,
+  Textarea,
   type Column,
   type SelectOption,
 } from '@/components/ui';
 import { ErrorState, QueryBoundary } from '@/components/feedback';
 import { useCan } from '@/auth';
-import { createAssignment, fetchAssignments, publishAssignment } from '@/assignments/assignments.api';
-import { fetchClassRoster, fetchMyClasses } from '@/academic/academic.api';
+import { createAssignment, fetchAssignments } from '@/assignments/assignments.api';
+import { fetchClassRoster, fetchMyClasses, fetchSubjects } from '@/academic/academic.api';
+import { fetchTopics } from '@/curriculum/curriculum.api';
+import { fetchActivities, fetchLessons } from '@/content/content.api';
+import { fetchAssessments } from '@/assessment/assessment.api';
 import type { Assignment } from '@/assignments/assignments.types';
 import { qk } from '@/query/keys';
 import { paths } from '@/routes/paths';
@@ -45,7 +49,9 @@ const KIND_OPTIONS: SelectOption[] = [
   { value: 'MISSION', label: 'Mission' },
 ];
 
-const WORK_TYPE_OPTIONS: SelectOption[] = [
+type WorkType = 'topicId' | 'lessonId' | 'activityId' | 'assessmentId';
+
+const WORK_TYPE_OPTIONS: { value: WorkType; label: string }[] = [
   { value: 'topicId', label: 'Topic' },
   { value: 'lessonId', label: 'Lesson' },
   { value: 'activityId', label: 'Activity' },
@@ -59,6 +65,7 @@ export function AssignmentsPage() {
   const canWrite = useCan('assignment.write');
   const [classFilter, setClassFilter] = useState('');
   const [isCreateOpen, setCreateOpen] = useState(false);
+  const [template, setTemplate] = useState<Assignment | null>(null);
   const [page, setPage] = useState(1);
 
   const classesQuery = useQuery({ queryKey: qk.classes.mine, queryFn: fetchMyClasses });
@@ -86,6 +93,27 @@ export function AssignmentsPage() {
         <Badge tone={row.isPublished ? 'success' : 'neutral'}>{row.isPublished ? 'Published' : 'Draft'}</Badge>
       ),
     },
+    ...(canWrite
+      ? [
+          {
+            key: 'again',
+            header: <span className="sr-only">Reuse</span>,
+            render: (row: Assignment) => (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={(event) => {
+                  // The row itself opens the assignment; this button must not.
+                  event.stopPropagation();
+                  setTemplate(row);
+                }}
+              >
+                Set again
+              </Button>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -148,11 +176,125 @@ export function AssignmentsPage() {
         </QueryBoundary>
       </Card>
 
-      {isCreateOpen ? (
+      {isCreateOpen || template ? (
         <CreateAssignmentModal
           classes={classesQuery.data?.items ?? []}
-          onClose={() => setCreateOpen(false)}
+          template={template}
+          onClose={() => {
+            setCreateOpen(false);
+            setTemplate(null);
+          }}
         />
+      ) : null}
+    </div>
+  );
+}
+
+const LATE_OPTIONS: SelectOption[] = [
+  { value: 'ALLOW_LATE_FLAGGED', label: 'Accept late work, marked late' },
+  { value: 'ALLOW_UNTIL_GRACE_END', label: 'Accept late work for a grace period' },
+  { value: 'ALLOW_LATE_SILENT', label: 'Accept late work without marking it' },
+  { value: 'BLOCK_AFTER_DUE', label: 'Close at the due time' },
+];
+
+/**
+ * The content picker that replaced a free-text "content ID" box: choose the
+ * subject, then the kind of work, then the item — only items that exist, in
+ * that subject, that a learner can actually open.
+ */
+function ContentPicker({
+  subjectId,
+  workType,
+  workId,
+  onSubjectChange,
+  onWorkTypeChange,
+  onWorkIdChange,
+}: {
+  subjectId: string;
+  workType: WorkType;
+  workId: string;
+  onSubjectChange: (value: string) => void;
+  onWorkTypeChange: (value: WorkType) => void;
+  onWorkIdChange: (value: string) => void;
+}) {
+  const subjects = useQuery({ queryKey: qk.subjects.list(), queryFn: fetchSubjects });
+  const enabled = subjectId.length > 0;
+  const params = { subjectId, pageSize: 100 };
+
+  const options = useQuery({
+    queryKey: qk.assignments.content(workType, subjectId),
+    enabled,
+    queryFn: async (): Promise<SelectOption[]> => {
+      if (workType === 'topicId') {
+        return (await fetchTopics(params)).items.map((row) => ({ value: row.id, label: row.name }));
+      }
+      if (workType === 'lessonId') {
+        return (await fetchLessons({ ...params, status: 'PUBLISHED' })).items.map((row) => ({ value: row.id, label: row.title }));
+      }
+      if (workType === 'activityId') {
+        return (await fetchActivities({ ...params, status: 'PUBLISHED' })).items.map((row) => ({
+          value: row.id,
+          label: `${row.title} (${humanize(row.type).toLowerCase()})`,
+        }));
+      }
+      return (await fetchAssessments({ ...params, status: 'PUBLISHED' })).items.map((row) => ({
+        value: row.id,
+        label: row.title,
+      }));
+    },
+  });
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-line p-3">
+      <p className="text-sm font-medium text-ink">What to do</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Subject" isRequired>
+          <Select
+            value={subjectId}
+            placeholder={subjects.isPending ? 'Loading…' : 'Choose a subject'}
+            onChange={(event) => {
+              onSubjectChange(event.target.value);
+              onWorkIdChange('');
+            }}
+            options={(subjects.data?.items ?? []).map((row) => ({ value: row.id, label: row.name }))}
+          />
+        </Field>
+        <Field label="Kind of work">
+          <Select
+            value={workType}
+            onChange={(event) => {
+              onWorkTypeChange(event.target.value as WorkType);
+              onWorkIdChange('');
+            }}
+            options={WORK_TYPE_OPTIONS}
+          />
+        </Field>
+      </div>
+      {enabled ? (
+        options.error ? (
+          <ErrorState error={options.error} />
+        ) : (
+          <Field
+            label="Item"
+            isRequired
+            hint={
+              workType === 'assessmentId'
+                ? 'Marked automatically; the score is recorded when the learner finishes.'
+                : workType === 'activityId'
+                  ? 'Only published activities are listed.'
+                  : undefined
+            }
+          >
+            <Select
+              value={workId}
+              placeholder={
+                options.isPending ? 'Loading…' : (options.data?.length ?? 0) === 0 ? 'Nothing published here yet' : 'Choose one'
+              }
+              onChange={(event) => onWorkIdChange(event.target.value)}
+              options={options.data ?? []}
+            />
+          </Field>
+        )
       ) : null}
     </div>
   );
@@ -160,21 +302,40 @@ export function AssignmentsPage() {
 
 function CreateAssignmentModal({
   classes,
+  template,
   onClose,
 }: {
   classes: { id: string; name: string }[];
+  /** Set to reuse an earlier assignment: everything is copied except the dates. */
+  template?: Assignment | null;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [title, setTitle] = useState('');
-  const [kind, setKind] = useState('HOMEWORK');
+  const initialWorkType: WorkType = template?.assessmentId
+    ? 'assessmentId'
+    : template?.activityId
+      ? 'activityId'
+      : template?.lessonId
+        ? 'lessonId'
+        : template?.topicId
+          ? 'topicId'
+          : 'activityId';
+  const [title, setTitle] = useState(template?.title ?? '');
+  const [instructions, setInstructions] = useState(template?.instructions ?? '');
+  const [kind, setKind] = useState<string>(template?.kind ?? 'HOMEWORK');
   const [classId, setClassId] = useState(classes[0]?.id ?? '');
   const [audience, setAudience] = useState<'CLASS' | 'STUDENT'>('CLASS');
   const [studentIds, setStudentIds] = useState<string[]>([]);
-  const [workType, setWorkType] = useState('activityId');
-  const [workId, setWorkId] = useState('');
+  const [subjectId, setSubjectId] = useState(template?.subjectId ?? '');
+  const [workType, setWorkType] = useState<WorkType>(initialWorkType);
+  const [workId, setWorkId] = useState(template ? (template[initialWorkType] ?? '') : '');
+  const [availableFrom, setAvailableFrom] = useState('');
   const [dueAt, setDueAt] = useState('');
-  const [pointsValue, setPointsValue] = useState('10');
+  const [lateBehavior, setLateBehavior] = useState<string>(template?.lateBehavior ?? 'ALLOW_LATE_FLAGGED');
+  const [graceHours, setGraceHours] = useState(String(template?.graceHours ?? 24));
+  const [allowResubmission, setAllowResubmission] = useState(template?.allowResubmission ?? true);
+  const [maxAttempts, setMaxAttempts] = useState(template?.maxAttempts ? String(template.maxAttempts) : '');
+  const [pointsValue, setPointsValue] = useState(String(template?.pointsValue ?? 10));
   const [publishNow, setPublishNow] = useState(false);
 
   const create = useMutation({
@@ -183,18 +344,23 @@ function CreateAssignmentModal({
         title: title.trim(),
         kind,
         classId,
+        subjectId,
         pointsValue: Number(pointsValue) || 0,
+        lateBehavior,
+        allowResubmission,
         targets:
           audience === 'CLASS'
             ? [{ targetType: 'CLASS', targetId: classId }]
             : studentIds.map((id) => ({ targetType: 'STUDENT', targetId: id })),
-        [workType]: workId.trim(),
+        [workType]: workId,
+        publish: publishNow,
       };
+      if (instructions.trim()) input.instructions = instructions.trim();
+      if (availableFrom) input.availableFrom = new Date(availableFrom).toISOString();
       if (dueAt) input.dueAt = new Date(dueAt).toISOString();
-
-      const created = await createAssignment(input);
-      if (publishNow) await publishAssignment(created.id);
-      return created;
+      if (lateBehavior === 'ALLOW_UNTIL_GRACE_END') input.graceHours = Number(graceHours);
+      if (allowResubmission && maxAttempts) input.maxAttempts = Number(maxAttempts);
+      return createAssignment(input);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.assignments.all });
@@ -202,24 +368,33 @@ function CreateAssignmentModal({
     },
   });
 
-  const canSubmit =
-    title.trim().length > 1 &&
-    classId.length > 0 &&
-    workId.trim().length > 0 &&
-    (audience === 'CLASS' || studentIds.length > 0);
+  // Mirrors the server's own checks so the reason sits next to the button.
+  const blockedReason =
+    title.trim().length < 2
+      ? 'Give it a title.'
+      : !classId
+        ? 'Choose a class.'
+        : !workId
+          ? 'Choose the work to set.'
+          : audience === 'STUDENT' && studentIds.length === 0
+            ? 'Choose at least one learner.'
+            : availableFrom && dueAt && new Date(dueAt) <= new Date(availableFrom)
+              ? 'The due time must be after it opens.'
+              : null;
 
   return (
     <Modal
       isOpen
       onClose={onClose}
-      title="New assignment"
+      size="lg"
+      title={template ? `Set “${template.title}” again` : 'New assignment'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={() => create.mutate()} isLoading={create.isPending} disabled={!canSubmit}>
-            Create
+          <Button onClick={() => create.mutate()} isLoading={create.isPending} disabled={blockedReason !== null}>
+            {publishNow ? 'Set it' : 'Save draft'}
           </Button>
         </>
       }
@@ -230,8 +405,11 @@ function CreateAssignmentModal({
         <Field label="Title" isRequired>
           <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Fractions practice" />
         </Field>
+        <Field label="Instructions" hint="What the learner sees with the work.">
+          <Textarea rows={3} value={instructions} onChange={(event) => setInstructions(event.target.value)} />
+        </Field>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Kind" isRequired>
             <Select options={KIND_OPTIONS} value={kind} onChange={(event) => setKind(event.target.value)} />
           </Field>
@@ -239,7 +417,10 @@ function CreateAssignmentModal({
             <Select
               options={classes.map((c) => ({ value: c.id, label: c.name }))}
               value={classId}
-              onChange={(event) => setClassId(event.target.value)}
+              onChange={(event) => {
+                setClassId(event.target.value);
+                setStudentIds([]);
+              }}
               disabled={classes.length === 0}
             />
           </Field>
@@ -256,35 +437,64 @@ function CreateAssignmentModal({
           onStudentIdsChange={setStudentIds}
         />
 
-        <div className="grid grid-cols-[auto_1fr] gap-3">
-          <Field label="Work item">
-            <Select options={WORK_TYPE_OPTIONS} value={workType} onChange={(event) => setWorkType(event.target.value)} />
+        <ContentPicker
+          subjectId={subjectId}
+          workType={workType}
+          workId={workId}
+          onSubjectChange={setSubjectId}
+          onWorkTypeChange={setWorkType}
+          onWorkIdChange={setWorkId}
+        />
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Opens" hint="Empty opens it straight away. Learners do not see it before then.">
+            <Input type="datetime-local" value={availableFrom} onChange={(event) => setAvailableFrom(event.target.value)} />
           </Field>
-          <Field label="Content ID" isRequired hint="The id of the lesson, activity, assessment or topic to set.">
-            <Input value={workId} onChange={(event) => setWorkId(event.target.value)} placeholder="e.g. activity id" />
+          <Field label="Due">
+            <Input type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} />
           </Field>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Due date">
-            <Input type="date" value={dueAt} onChange={(event) => setDueAt(event.target.value)} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Late work">
+            <Select options={LATE_OPTIONS} value={lateBehavior} onChange={(event) => setLateBehavior(event.target.value)} />
           </Field>
+          {lateBehavior === 'ALLOW_UNTIL_GRACE_END' ? (
+            <Field label="Grace period (hours)" hint="0 to 336.">
+              <Input type="number" min={0} max={336} value={graceHours} onChange={(event) => setGraceHours(event.target.value)} />
+            </Field>
+          ) : (
+            <Field label="Points">
+              <Input type="number" min={0} value={pointsValue} onChange={(event) => setPointsValue(event.target.value)} />
+            </Field>
+          )}
+        </div>
+        {lateBehavior === 'ALLOW_UNTIL_GRACE_END' ? (
           <Field label="Points">
-            <Input
-              type="number"
-              min={0}
-              value={pointsValue}
-              onChange={(event) => setPointsValue(event.target.value)}
-            />
+            <Input type="number" min={0} value={pointsValue} onChange={(event) => setPointsValue(event.target.value)} />
           </Field>
+        ) : null}
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Checkbox
+            label="Allow another go after handing in"
+            checked={allowResubmission}
+            onChange={(event) => setAllowResubmission(event.target.checked)}
+          />
+          {allowResubmission ? (
+            <Field label="Most goes allowed" hint="Empty for no limit. Up to 20.">
+              <Input type="number" min={1} max={20} value={maxAttempts} onChange={(event) => setMaxAttempts(event.target.value)} />
+            </Field>
+          ) : null}
         </div>
 
         <Checkbox
-          label="Publish immediately"
-          hint="Otherwise this is saved as a draft learners cannot see yet."
+          label="Publish now"
+          hint="Otherwise it is saved as a draft learners cannot see yet."
           checked={publishNow}
           onChange={(event) => setPublishNow(event.target.checked)}
         />
+        {blockedReason ? <p className="text-sm text-ink-muted">{blockedReason}</p> : null}
       </div>
     </Modal>
   );

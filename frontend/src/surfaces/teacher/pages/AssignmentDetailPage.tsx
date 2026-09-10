@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiPost } from '@/api';
 import {
   Avatar,
   Badge,
@@ -27,8 +26,10 @@ import {
   archiveAssignment,
   fetchAssignment,
   fetchAssignmentMonitor,
+  excuseLearners,
   giveAttemptFeedback,
   publishAssignment,
+  reinstateLearners,
   updateAssignment,
 } from '@/assignments/assignments.api';
 import type { Assignment } from '@/assignments/assignments.types';
@@ -392,10 +393,10 @@ function AttemptActionModal({
       if (action.kind === 'feedback') {
         return giveAttemptFeedback(action.row.attempt!.id, text.trim());
       }
-      return apiPost(`/assignments/${encodeURIComponent(assignmentId)}/${action.kind === 'excuse' ? 'excuse' : 'unexcuse'}`, {
-        studentIds: [action.row.student.id],
-        reason: text.trim(),
-      });
+      const studentIds = [action.row.student.id];
+      return action.kind === 'excuse'
+        ? excuseLearners(assignmentId, studentIds, text.trim())
+        : reinstateLearners(assignmentId, studentIds, text.trim());
     },
     onSuccess: onDone,
   });
