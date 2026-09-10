@@ -74,3 +74,20 @@ export interface InteractResult {
   stageChanged: boolean;
   dailyCapReached: boolean;
 }
+
+/** `GET /companion/roster` row. */
+export interface CompanionRosterRow {
+  id: string;
+  studentId: string;
+  speciesKey: SpeciesKey;
+  name: string;
+  stage: CompanionStage;
+  stageLabel: string;
+  mood: CompanionMood;
+  growthPoints: number;
+  level: number;
+  careStreak: number;
+  lastInteractionAt: string;
+  quietDays: number;
+  student: { id: string; displayName: string; firstName: string; lastName: string };
+}

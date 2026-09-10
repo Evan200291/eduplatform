@@ -2,6 +2,7 @@ import { apiGet, apiGetPaged, apiPatch, apiPost } from '@/api';
 import type { Paginated } from '@/api/types';
 import type { MasteryRecord } from '@/assessment/assessment.types';
 import type {
+  ClassProgress,
   ProgressListQuery,
   ProgressRecord,
   ProgressSummary,
@@ -82,4 +83,12 @@ export function updateTeacherAssessment(
   input: { level?: string; comment?: string; countsAsEvidence?: boolean },
 ): Promise<TeacherJudgment> {
   return apiPatch<TeacherJudgment>(`/teacher-assessments/${encodeURIComponent(id)}`, input);
+}
+
+/** A teacher's class overview; scoped server-side to classes they may read. */
+export function fetchClassProgress(
+  classId: string,
+  query?: { subjectId?: string; since?: string },
+): Promise<ClassProgress> {
+  return apiGet<ClassProgress>(`/progress/classes/${encodeURIComponent(classId)}`, { params: query });
 }

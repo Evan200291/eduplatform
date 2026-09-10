@@ -27,6 +27,7 @@ import { qk } from '@/query/keys';
 import { paths } from '@/routes/paths';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import type { StudentNavState } from '../lib/nav-state';
+import { ClassProgressCard, QuietBuddiesCard, StreaksAtRiskCard } from './ClassInsights';
 
 /** One class: its details, and the roster a teacher jumps into a student from. */
 export function ClassDetailPage() {
@@ -134,6 +135,13 @@ function ClassDetail({ classId }: { classId: string }) {
           </QueryBoundary>
         </CardBody>
       </Card>
+
+      <ClassProgressCard classId={classId} />
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <StreaksAtRiskCard classId={classId} />
+        <QuietBuddiesCard classId={classId} />
+      </div>
 
       {isEditing && classQuery.data ? (
         <EditClassModal schoolClass={classQuery.data} onClose={() => setEditing(false)} />

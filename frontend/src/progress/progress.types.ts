@@ -79,3 +79,17 @@ export interface TeacherJudgment {
   subject: { id: string; name: string } | null;
   topic: { id: string; name: string } | null;
 }
+
+/** `GET /progress/classes/:id` — one engagement row per learner in the class. */
+export interface ClassProgress {
+  classId: string;
+  students: {
+    student: { id: string; firstName: string; lastName: string; displayName: string };
+    activitiesTouched: number;
+    attempts: number;
+    timeSpentSeconds: number;
+    lastActivityAt: string | null;
+    /** Count of topics at each mastery level, e.g. `{ PROFICIENT: 3 }`. */
+    masteryByLevel: Partial<Record<string, number>>;
+  }[];
+}

@@ -10,6 +10,7 @@ import type {
   PointsSummary,
   RewardCatalogueRow,
   RewardListQuery,
+  StreakRow,
   StreakConfig,
   StreakReading,
   StudentBadgeAward,
@@ -166,4 +167,16 @@ export function archiveReward(rewardId: string): Promise<RewardCatalogueRow> {
 
 export function fetchGamificationConfig(): Promise<unknown> {
   return apiGet('/gamification/config');
+}
+
+/** The habit view across a class; `atRiskOnly` is who lapses today unless they act. */
+export function fetchStreaks(query?: {
+  classId?: string;
+  studentId?: string;
+  kind?: string;
+  atRiskOnly?: boolean;
+  page?: number;
+  pageSize?: number;
+}): Promise<Paginated<StreakRow>> {
+  return apiGetPaged<StreakRow>('/gamification/streaks', query);
 }

@@ -2,6 +2,7 @@ import { apiGet, apiGetPaged, apiPatch, apiPost, apiPut } from '@/api';
 import type { Paginated } from '@/api/types';
 import type {
   CompanionEvent,
+  CompanionRosterRow,
   CompanionResult,
   CompanionSummary,
   GrowthConfig,
@@ -69,4 +70,28 @@ export function updateGrowthConfig(
   thresholds: { stage: string; growthPoints: number }[],
 ): Promise<GrowthConfig> {
   return apiPut<GrowthConfig>('/companion/growth-config', { thresholds });
+}
+
+// ── Staff ─────────────────────────────────────────────────────────────────
+
+/** Who has a buddy and who has gone quiet; a teacher sees only their classes. */
+export function fetchCompanionRoster(query?: {
+  classId?: string;
+  quietOnly?: boolean;
+  page?: number;
+  pageSize?: number;
+}): Promise<Paginated<CompanionRosterRow>> {
+  return apiGetPaged<CompanionRosterRow>('/companion/roster', query);
+}
+
+/**
+ * Growth for learning that happened off-screen. Learners without a buddy are
+ * skipped, never given one — choosing it is the child's moment.
+ */
+export function grantCompanionGrowth(input: {
+  studentIds: string[];
+  growthPoints: number;
+  note: string;
+}): Promise<{ granted: number; skipped: number; stageChanges: number }> {
+  return apiPost('/companion/grant', input);
 }

@@ -162,3 +162,18 @@ export interface RewardListQuery extends ListQuery {
   affordableOnly?: boolean;
   withMine?: boolean;
 }
+
+/** `GET /gamification/streaks` row — mirrors `STREAK_SELECT`. */
+export interface StreakRow {
+  id: string;
+  studentId: string;
+  kind: StreakKind;
+  currentLength: number;
+  longestLength: number;
+  lastQualifiedOn: string | null;
+  startedOn: string | null;
+  atRiskNotifiedAt: string | null;
+  freezesRemaining: number;
+  updatedAt: string;
+  student: { id: string; displayName: string; firstName: string; lastName: string };
+}
