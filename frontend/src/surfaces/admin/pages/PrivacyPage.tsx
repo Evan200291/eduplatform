@@ -34,6 +34,7 @@ import {
   fetchProcessingPurposes,
   recordConsent,
   transitionDataRequest,
+  updateDataRequest,
   withdrawConsent,
 } from '@/privacy/privacy.api';
 import type {
@@ -332,6 +333,21 @@ function RequestModal({
     },
   });
   const download = useMutation({ mutationFn: () => downloadSubjectExport(request.id) });
+  const [isEditing, setEditing] = useState(false);
+  const [details, setDetails] = useState(request.details ?? '');
+  const [dueAt, setDueAt] = useState(request.dueAt.slice(0, 10));
+  const edit = useMutation({
+    mutationFn: () =>
+      updateDataRequest(request.id, {
+        ...(details.trim() !== (request.details ?? '') ? { details: details.trim() } : {}),
+        ...(dueAt !== request.dueAt.slice(0, 10) ? { dueAt: new Date(`${dueAt}T23:59:00`).toISOString() } : {}),
+      }),
+    onSuccess: (updated) => {
+      setEditing(false);
+      onChanged(updated);
+    },
+  });
+  const editChanged = details.trim() !== (request.details ?? '') || dueAt !== request.dueAt.slice(0, 10);
 
   const needsNote = status === 'REJECTED' || status === 'COMPLETED';
   const isExport = request.kind === 'EXPORT';
@@ -356,7 +372,34 @@ function RequestModal({
             Raised {formatDate(request.createdAt)} by {request.requestedBy.displayName} · due {formatDate(request.dueAt)}
           </span>
         </div>
-        {request.details ? <p className="text-ink">{request.details}</p> : null}
+        {isEditing ? (
+          <div className="flex flex-col gap-3 rounded-lg border border-line p-3">
+            {edit.error ? <ErrorState error={edit.error} /> : null}
+            <Field label="Details" hint="What the family asked for, in their words where possible.">
+              <Textarea rows={3} maxLength={4000} value={details} onChange={(event) => setDetails(event.target.value)} />
+            </Field>
+            <Field label="Due" hint="Moving the deadline is recorded in the audit log with who moved it.">
+              <Input type="date" value={dueAt} onChange={(event) => setDueAt(event.target.value)} />
+            </Field>
+            <div className="flex gap-2">
+              <Button size="sm" isLoading={edit.isPending} disabled={!editChanged || !dueAt} onClick={() => edit.mutate()}>
+                Save
+              </Button>
+              <Button size="sm" variant="outline" disabled={edit.isPending} onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            {request.details ? <p className="min-w-0 flex-1 text-ink">{request.details}</p> : <span />}
+            {canWrite && isOpen ? (
+              <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+                Edit details or due date
+              </Button>
+            ) : null}
+          </div>
+        )}
         {request.outcomeNote ? (
           <p className="rounded-lg bg-surface-sunken p-3 text-ink">
             <span className="font-medium">Outcome: </span>

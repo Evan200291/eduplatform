@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Badge,
   type BadgeTone,
+  Button,
   Card,
   CardBody,
   CardHeader,
@@ -23,6 +24,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title';
 import { formatDateTime } from '@/lib/format';
 import { fetchAuditEntries, fetchAuditSummary } from '@/privacy/privacy.api';
 import type { AuditListRow } from '@/privacy/privacy.types';
+import { AuditEntryModal } from './AuditEntryModal';
 
 const RESULT_TONE: Record<AuditListRow['result'], BadgeTone> = {
   SUCCESS: 'success',
@@ -39,6 +41,7 @@ export function AuditPage() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const summary = useQuery({ queryKey: qk.audit.summary(30), queryFn: () => fetchAuditSummary(30) });
 
@@ -75,6 +78,15 @@ export function AuditPage() {
       key: 'result',
       header: 'Result',
       render: (row) => <Badge tone={RESULT_TONE[row.result]}>{row.result}</Badge>,
+    },
+    {
+      key: 'open',
+      header: '',
+      render: (row) => (
+        <Button size="sm" variant="outline" onClick={() => setOpenId(row.id)}>
+          Details
+        </Button>
+      ),
     },
   ];
 
@@ -151,6 +163,7 @@ export function AuditPage() {
           </QueryBoundary>
         </CardBody>
       </Card>
+      {openId ? <AuditEntryModal entryId={openId} onClose={() => setOpenId(null)} /> : null}
     </div>
   );
 }

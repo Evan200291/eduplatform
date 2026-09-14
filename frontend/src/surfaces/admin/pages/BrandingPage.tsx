@@ -26,6 +26,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title';
 import { formatDateTime } from '@/lib/format';
 import {
   activateTheme,
+  deactivateTheme,
   archiveTheme,
   createTheme,
   fetchThemes,
@@ -84,6 +85,15 @@ export function BrandingPage() {
   const activate = useMutation({ mutationFn: (id: string) => activateTheme(id), onSuccess: invalidate });
   const archive = useMutation({ mutationFn: (id: string) => archiveTheme(id), onSuccess: invalidate });
   const restore = useMutation({ mutationFn: (id: string) => restoreTheme(id), onSuccess: invalidate });
+  const [confirmDefault, setConfirmDefault] = useState(false);
+  /** Takes the school's theme off, so every screen returns to the platform default. */
+  const deactivate = useMutation({
+    mutationFn: () => deactivateTheme(),
+    onSuccess: () => {
+      setConfirmDefault(false);
+      invalidate();
+    },
+  });
 
   const themes = query.data?.items ?? [];
   const active = themes.find((t) => t.isActiveForSchool);
@@ -111,11 +121,29 @@ export function BrandingPage() {
           >
             <IconBranding aria-hidden className="h-5 w-5" />
           </span>
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-sm text-ink-muted">Live theme</p>
             <p className="text-lg font-semibold text-ink">{active ? active.theme.name : 'Platform default'}</p>
           </div>
+          {canPublish && active ? (
+            confirmDefault ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-ink">Every screen goes back to the Midas colours.</span>
+                <Button size="sm" variant="danger" isLoading={deactivate.isPending} onClick={() => deactivate.mutate()}>
+                  Use the default
+                </Button>
+                <Button size="sm" variant="outline" disabled={deactivate.isPending} onClick={() => setConfirmDefault(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => setConfirmDefault(true)}>
+                Switch back to the default
+              </Button>
+            )
+          ) : null}
         </CardBody>
+        {deactivate.error ? <ErrorState error={deactivate.error} className="mx-4 mb-4" /> : null}
       </Card>
 
       <Card>
