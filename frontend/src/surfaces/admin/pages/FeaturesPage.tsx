@@ -79,6 +79,12 @@ const CATEGORY_LABEL: Record<FeatureCategory, string> = {
   commercial: 'Commercial',
 };
 
+/**
+ * Features the PRD rules out. The registry still lists them, so they show here,
+ * but nobody is offered a "Turn on". One already on can still be turned off.
+ */
+const PRD_NEVER_ON: ReadonlySet<string> = new Set(['learning.path.autoApprove']);
+
 /** What is switched on for this school — the entitlement catalogue, toggle-able where allowed. */
 export function FeaturesPage() {
   useDocumentTitle('Features');
@@ -305,7 +311,11 @@ export function FeaturesPage() {
                           <p className="text-xs text-ink-muted">Decided by {feature.decidedBy} · {feature.reason}</p>
                         </div>
                       </div>
-                      {canWrite && feature.configurableScopes.includes(scopeType) && !feature.isSafetyRule ? (
+                      {PRD_NEVER_ON.has(feature.key) && !feature.enabled ? (
+                        <p className="max-w-xs text-xs text-ink-muted">
+                          Stays off: PRD v2.5 says a teacher always decides on recommendations.
+                        </p>
+                      ) : canWrite && feature.configurableScopes.includes(scopeType) && !feature.isSafetyRule ? (
                         <Button
                           size="sm"
                           variant={feature.enabled ? 'outline' : 'primary'}

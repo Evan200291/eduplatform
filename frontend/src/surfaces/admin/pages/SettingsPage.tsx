@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Alert,
   Badge,
   Button,
   Card,
@@ -46,7 +47,10 @@ const RETENTION_ACTION_LABEL: Record<RetentionAction, string> = {
   ARCHIVE: 'Archive',
 };
 
-const PATH_MODES: PathMode[] = ['GRADE_BASED', 'SUBJECT_BASED', 'TOPIC_BASED', 'HYBRID'];
+/** PRD v2.5: the teacher is always the decision maker on a recommendation. */
+const TEACHER_DECIDES = { recommendationApprovalRequired: true, recommendationAutoApproveHours: null } as const;
+
+const PATH_MODES: PathMode[] =['GRADE_BASED', 'SUBJECT_BASED', 'TOPIC_BASED', 'HYBRID'];
 const PATH_MODE_LABELS: Record<PathMode, string> = {
   GRADE_BASED: 'Grade-based',
   SUBJECT_BASED: 'Subject-based',
@@ -135,17 +139,39 @@ function SettingsForm({
   });
 
   const patch = (partial: Partial<SchoolSettings>) => setForm((prev) => ({ ...prev, ...partial }));
+  const autoApproves = !settings.recommendationApprovalRequired || settings.recommendationAutoApproveHours !== null;
 
   return (
     <form
       className="flex flex-col gap-6"
       onSubmit={(event) => {
         event.preventDefault();
-        save.mutate(form);
+        save.mutate({ ...form, ...TEACHER_DECIDES });
       }}
     >
       {save.error ? <ErrorState error={save.error} /> : null}
       {save.isSuccess ? <Badge tone="success">Saved</Badge> : null}
+
+      {autoApproves ? (
+        <Alert tone="warning" title="Recommendations can be applied without a teacher">
+          <p>
+            {settings.recommendationApprovalRequired
+              ? `A recommendation nobody decides on is applied automatically after ${settings.recommendationAutoApproveHours} hours.`
+              : 'Recommendations are applied to learning paths straight away, without a teacher seeing them.'}{' '}
+            PRD v2.5 says a teacher always decides.
+          </p>
+          {canWrite ? (
+            <Button
+              size="sm"
+              className="mt-2"
+              isLoading={save.isPending}
+              onClick={() => save.mutate(TEACHER_DECIDES)}
+            >
+              Require a teacher&apos;s decision
+            </Button>
+          ) : null}
+        </Alert>
+      ) : null}
 
       <Card>
         <CardHeader title="Gamification" description="Points, badges, streaks and the leaderboard." />
@@ -207,12 +233,15 @@ function SettingsForm({
               onChange={(event) => patch({ ongoingCheckFrequencyDays: Number(event.target.value) })}
             />
           </Field>
-          <Checkbox
-            label="Recommendation approval required"
-            checked={form.recommendationApprovalRequired}
-            disabled={!canWrite}
-            onChange={(event) => patch({ recommendationApprovalRequired: event.target.checked })}
-          />
+          {/*
+            PRD v2.5: recommendations never auto-approve; a teacher always
+            decides. The switch that allowed otherwise is gone, and saving
+            this form always writes the teacher-decides values back.
+          */}
+          <p className="text-sm text-ink-muted sm:col-span-2">
+            Learning-path recommendations always wait for a teacher to approve, change or reject them. Nothing is
+            applied to a learner&apos;s path automatically.
+          </p>
           <Checkbox
             label="Students may self-reassess"
             checked={form.allowStudentSelfReassess}
@@ -327,10 +356,14 @@ function SettingsForm({
             disabled={!canWrite}
             onChange={(event) => patch({ studentPinRequired: event.target.checked })}
           />
-          <Field label="Session idle timeout (minutes)">
+          <Field
+            label="Sign out after this many idle minutes"
+            hint="Between 10 and 1440. People get a one-minute warning first."
+          >
             <Input
               type="number"
-              min={1}
+              min={10}
+              max={1440}
               disabled={!canWrite}
               value={form.sessionIdleMinutes}
               onChange={(event) => patch({ sessionIdleMinutes: Number(event.target.value) })}
