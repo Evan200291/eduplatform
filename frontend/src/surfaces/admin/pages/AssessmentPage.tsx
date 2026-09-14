@@ -32,6 +32,7 @@ import {
   fetchAssessments,
   moveAssessmentStatus,
   removeAssessmentItem,
+  setAssessmentItems,
   updateAssessment,
 } from '@/assessment/assessment.api';
 import type { AssessmentDefinition, AssessmentKind, CreateAssessmentInput } from '@/assessment/assessment.types';
@@ -313,6 +314,29 @@ function AssessmentDetailModal({
     mutationFn: (itemId: string) => removeAssessmentItem(assessmentId, itemId),
     onSuccess: invalidate,
   });
+  /**
+   * Order matters for a fixed-order assessment. The server takes the whole list
+   * back (PUT replaces it), so a move swaps two neighbours and resends every
+   * item with its band, weight and entry flag intact.
+   */
+  const reorder = useMutation({
+    mutationFn: ({ index, direction }: { index: number; direction: -1 | 1 }) => {
+      const items = [...(query.data?.items ?? [])];
+      const target = index + direction;
+      [items[index], items[target]] = [items[target], items[index]];
+      return setAssessmentItems(
+        assessmentId,
+        items.map((item, position) => ({
+          activityId: item.activityId,
+          sortOrder: position,
+          difficultyBand: item.difficultyBand,
+          weight: item.weight,
+          isAdaptiveEntry: item.isAdaptiveEntry,
+        })),
+      );
+    },
+    onSuccess: invalidate,
+  });
 
   const [pickedActivityId, setPickedActivityId] = useState('');
   const assessment = query.data;
@@ -428,11 +452,36 @@ function AssessmentDetailModal({
                 <p className="text-sm text-ink-muted">No items yet — this assessment has nothing to deliver.</p>
               ) : (
                 <ul className="divide-y divide-line rounded-md border border-line text-sm">
-                  {assessment.items.map((item) => (
+                  {assessment.items.map((item, index) => (
                     <li key={item.id} className="flex items-center justify-between gap-2 px-3 py-2">
-                      <span className="min-w-0 truncate text-ink">{item.activity.title}</span>
+                      <span className="min-w-0 truncate text-ink">
+                        {index + 1}. {item.activity.title}
+                      </span>
                       <div className="flex shrink-0 items-center gap-2">
                         <Badge tone="neutral">{item.difficultyBand}</Badge>
+                        {item.isAdaptiveEntry ? <Badge tone="info">Starts here</Badge> : null}
+                        {canWrite ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              aria-label={`Move ${item.activity.title} up`}
+                              disabled={index === 0 || reorder.isPending}
+                              onClick={() => reorder.mutate({ index, direction: -1 })}
+                            >
+                              Up
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              aria-label={`Move ${item.activity.title} down`}
+                              disabled={index === assessment.items.length - 1 || reorder.isPending}
+                              onClick={() => reorder.mutate({ index, direction: 1 })}
+                            >
+                              Down
+                            </Button>
+                          </>
+                        ) : null}
                         {canWrite ? (
                           <Button
                             size="sm"
@@ -472,6 +521,7 @@ function AssessmentDetailModal({
                 </div>
               ) : null}
               {addItem.error ? <ErrorState error={addItem.error} /> : null}
+              {reorder.error ? <ErrorState error={reorder.error} /> : null}
             </div>
           </div>
         ) : null}

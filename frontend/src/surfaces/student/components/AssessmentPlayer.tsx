@@ -4,6 +4,7 @@ import { Badge, Button, Card, CardBody, IconStart, IconSuccess, ProgressBar, Spi
 import { ErrorState } from '@/components/feedback';
 import { cn } from '@/lib/cn';
 import {
+  abandonAttempt,
   fetchNextItem,
   startAttempt,
   submitAttempt,
@@ -34,6 +35,8 @@ export function AssessmentPlayer({ assessmentId, isPractice, onComplete }: Asses
   const queryClient = useQueryClient();
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [lastFeedback, setLastFeedback] = useState<{ isCorrect?: boolean; feedback?: string } | null>(null);
+  const [confirmingStop, setConfirmingStop] = useState(false);
+  const [stopped, setStopped] = useState(false);
 
   const start = useMutation({
     mutationFn: () => startAttempt(assessmentId, { isPractice }),
@@ -66,12 +69,26 @@ export function AssessmentPlayer({ assessmentId, isPractice, onComplete }: Asses
     },
   });
 
+  /** Closing the attempt properly, so a half-finished one is not left open or counted. */
+  const stop = useMutation({
+    mutationFn: () => abandonAttempt(attemptId as string, 'Stopped by the learner'),
+    onSuccess: () => {
+      setConfirmingStop(false);
+      setAttemptId(null);
+      setStopped(true);
+      start.reset();
+    },
+  });
+
   if (!attemptId) {
     return (
       <Card className="border-2 border-primary-muted bg-primary-soft">
         <CardBody className="flex flex-col items-center gap-4 p-8 text-center">
           {start.error ? <ErrorState error={start.error} /> : null}
-          <p className={cn(text.heading, 'text-xl')}>Ready when you are</p>
+          {stopped ? (
+            <p className="text-ink">You stopped that one. Nothing you answered counts against you — start again whenever you like.</p>
+          ) : null}
+          <p className={cn(text.heading, 'text-xl')}>{stopped ? 'Start again?' : 'Ready when you are'}</p>
           <Button
             size="lg"
             isLoading={start.isPending}
@@ -155,7 +172,23 @@ export function AssessmentPlayer({ assessmentId, isPractice, onComplete }: Asses
       ))}
       {answer.error ? <ErrorState error={answer.error} /> : null}
       {isPractice ? <Badge tone="info">Practice — this won&apos;t count toward your score.</Badge> : null}
-      <div className="flex justify-end">
+      {stop.error ? <ErrorState error={stop.error} /> : null}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {confirmingStop ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-ink">Stop now? You can start again later.</span>
+            <Button size="sm" variant="danger" isLoading={stop.isPending} onClick={() => stop.mutate()}>
+              Yes, stop
+            </Button>
+            <Button size="sm" variant="outline" disabled={stop.isPending} onClick={() => setConfirmingStop(false)}>
+              Keep going
+            </Button>
+          </div>
+        ) : (
+          <Button size="sm" variant="ghost" onClick={() => setConfirmingStop(true)}>
+            Stop for now
+          </Button>
+        )}
         <ReportProblemButton key={data.item.activityId} activityId={data.item.activityId} />
       </div>
     </div>
