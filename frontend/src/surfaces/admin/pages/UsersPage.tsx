@@ -31,6 +31,7 @@ import { bulkCreateStudents, createInvitation, createUser, fetchUsers } from '@/
 import type { BulkStudentResult, UserSummary } from '@/users/users.types';
 import { ROLE_KEYS } from '@/types/enums';
 import { GroupsCard, InvitationsCard } from './UserEditors';
+import { StaffImportModal } from './ImportTools';
 
 const STATUS_TONE: Record<string, BadgeTone> = {
   ACTIVE: 'success',
@@ -64,6 +65,7 @@ export function UsersPage() {
   const [isInviteOpen, setInviteOpen] = useState(false);
   const [isAddOpen, setAddOpen] = useState(false);
   const [isBulkOpen, setBulkOpen] = useState(false);
+  const [isStaffImportOpen, setStaffImportOpen] = useState(false);
 
   const canCreate = useCan('user.create');
   const canInvite = useCan('invitation.create');
@@ -127,13 +129,18 @@ export function UsersPage() {
         actions={
           <>
             {canInvite ? (
-              <Button
-                variant="outline"
-                leadingIcon={<IconInvite aria-hidden className="h-4 w-4" />}
-                onClick={() => setInviteOpen(true)}
-              >
-                Invite staff
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  leadingIcon={<IconInvite aria-hidden className="h-4 w-4" />}
+                  onClick={() => setInviteOpen(true)}
+                >
+                  Invite staff
+                </Button>
+                <Button variant="outline" onClick={() => setStaffImportOpen(true)}>
+                  Import staff
+                </Button>
+              </>
             ) : null}
             {canCreate ? (
               <>
@@ -240,6 +247,12 @@ export function UsersPage() {
             invalidate();
             setAddOpen(false);
           }}
+        />
+      ) : null}
+      {isStaffImportOpen ? (
+        <StaffImportModal
+          onClose={() => setStaffImportOpen(false)}
+          onDone={invalidate}
         />
       ) : null}
       {isBulkOpen ? (

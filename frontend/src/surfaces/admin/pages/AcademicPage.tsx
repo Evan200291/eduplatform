@@ -26,7 +26,6 @@ import {
   archiveGrade,
   archiveSubject,
   assignClassTeacher,
-  createClass,
   createGrade,
   createSubject,
   createTerm,
@@ -48,6 +47,7 @@ import {
 import type { AcademicTerm, SchoolClass } from '@/academic/academic.types';
 import { fetchUsers } from '@/users/users.api';
 import { formatDate } from '@/lib/format';
+import { AddClassModal, ClassImportModal } from './ImportTools';
 
 /** Grades, terms, subjects and classes — the structure everything else hangs off. */
 export function AcademicPage() {
@@ -346,23 +346,22 @@ function ClassesSection({ canWrite }: { canWrite: boolean }) {
   const [rosterFor, setRosterFor] = useState<SchoolClass | null>(null);
   const [staffFor, setStaffFor] = useState<SchoolClass | null>(null);
   const [archiving, setArchiving] = useState<SchoolClass | null>(null);
+  const [isImportOpen, setImportOpen] = useState(false);
   const query = useQuery({ queryKey: qk.classes.list(), queryFn: () => fetchClasses() });
-  const create = useMutation({
-    mutationFn: (input: Record<string, unknown>) => createClass(input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: qk.classes.all });
-      setOpen(false);
-    },
-  });
 
   return (
     <Section
       title="Classes"
       actions={
         canWrite ? (
-          <Button size="sm" leadingIcon={<IconAdd aria-hidden className="h-4 w-4" />} onClick={() => setOpen(true)}>
-            Add
-          </Button>
+          <>
+            <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+              Import CSV
+            </Button>
+            <Button size="sm" leadingIcon={<IconAdd aria-hidden className="h-4 w-4" />} onClick={() => setOpen(true)}>
+              Add
+            </Button>
+          </>
         ) : undefined
       }
     >
@@ -398,19 +397,15 @@ function ClassesSection({ canWrite }: { canWrite: boolean }) {
         )}
       </QueryBoundary>
       {isOpen ? (
-        <Modal isOpen onClose={() => setOpen(false)} title="Add a class">
-          <SimpleCreateForm
-            error={create.error}
-            isPending={create.isPending}
-            fields={[
-              { key: 'name', label: 'Name', required: true },
-              { key: 'code', label: 'Code', required: true },
-            ]}
-            onCancel={() => setOpen(false)}
-            onSubmit={(values) => create.mutate(values)}
-          />
-        </Modal>
+        <AddClassModal
+          onClose={() => setOpen(false)}
+          onCreated={() => {
+            void queryClient.invalidateQueries({ queryKey: qk.classes.all });
+            setOpen(false);
+          }}
+        />
       ) : null}
+      {isImportOpen ? <ClassImportModal onClose={() => setImportOpen(false)} /> : null}
       {rosterFor ? (
         <ClassRosterModal klass={rosterFor} onClose={() => setRosterFor(null)} />
       ) : null}

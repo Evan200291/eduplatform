@@ -16,6 +16,10 @@ import type {
 export function fetchGrades(): Promise<Paginated<Grade>> {
   return apiGetPaged<Grade>('/grades');
 }
+/** Every grade in one page (the server caps a page at 200), for lookups such as CSV import. */
+export function fetchAllGrades(): Promise<Paginated<Grade>> {
+  return apiGetPaged<Grade>('/grades', { pageSize: 200 });
+}
 export function createGrade(input: Record<string, unknown>): Promise<Grade> {
   return apiPost<Grade>('/grades', input);
 }
@@ -29,6 +33,9 @@ export function createTerm(input: Record<string, unknown>): Promise<AcademicTerm
 
 export function fetchSubjects(): Promise<Paginated<Subject>> {
   return apiGetPaged<Subject>('/subjects');
+}
+export function fetchAllSubjects(): Promise<Paginated<Subject>> {
+  return apiGetPaged<Subject>('/subjects', { pageSize: 200 });
 }
 export function createSubject(input: Record<string, unknown>): Promise<Subject> {
   return apiPost<Subject>('/subjects', input);
