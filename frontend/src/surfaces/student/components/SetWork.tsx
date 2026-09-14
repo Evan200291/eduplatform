@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Badge, Button, Field, Modal, Textarea } from '@/components/ui';
 import { ErrorState } from '@/components/feedback';
 import { cn } from '@/lib/cn';
-import { formatRelative } from '@/lib/format';
+import { formatAboutMinutes, formatRelative } from '@/lib/format';
 import { startAssignment, submitAssignment } from '@/assignments/assignments.api';
 import type { AssignmentAttempt, AssignmentState } from '@/assignments/assignments.types';
 import { qk } from '@/query/keys';
@@ -72,6 +72,9 @@ export function SetWorkList({ attempts }: { attempts: AssignmentAttempt[] }) {
               <p className="font-medium text-ink">{attempt.assignment.title}</p>
               <p className="text-sm text-ink-muted">
                 {attempt.assignment.dueAt ? `Due ${formatRelative(attempt.assignment.dueAt)}` : 'No due date'}
+                {formatAboutMinutes(attempt.assignment.estimatedMinutes)
+                  ? ` · ${formatAboutMinutes(attempt.assignment.estimatedMinutes)?.toLowerCase()}`
+                  : ''}
               </p>
             </div>
             <div className="flex items-center gap-2">

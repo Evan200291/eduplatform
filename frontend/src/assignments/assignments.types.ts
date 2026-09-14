@@ -67,6 +67,8 @@ export interface AssignmentAttempt {
     lessonId: string | null;
     activityId: string | null;
     assessmentId: string | null;
+    /** Not in the server's attempt select yet (`ATTEMPT_SELECT`); shown once it is. */
+    estimatedMinutes?: number | null;
   };
 }
 

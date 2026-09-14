@@ -26,8 +26,20 @@ export interface PathItem {
   completedAt: string | null;
   dueAt: string | null;
   topic: { id: string; name: string; key: string; difficultyBand: string; estimatedMinutes: number | null } | null;
-  lesson: { id: string; title: string; key: string } | null;
-  activity: { id: string; title: string; key: string; type: string; pointsValue: number } | null;
+  /**
+   * `estimatedMinutes` on the lesson and activity is not in the server's path
+   * select yet (`learning.items.service.ts` / `learning.service.ts`). Typed as
+   * optional so the learner's time estimate appears as soon as it is added.
+   */
+  lesson: { id: string; title: string; key: string; estimatedMinutes?: number | null } | null;
+  activity: {
+    id: string;
+    title: string;
+    key: string;
+    type: string;
+    pointsValue: number;
+    estimatedMinutes?: number | null;
+  } | null;
   assessment: { id: string; title: string; key: string; kind: string } | null;
 }
 

@@ -21,6 +21,7 @@ import {
 } from '@/components/ui';
 import { QueryBoundary, ErrorState } from '@/components/feedback';
 import { cn } from '@/lib/cn';
+import { formatAboutMinutes } from '@/lib/format';
 import { fetchEnrolledClasses } from '@/academic/academic.api';
 import { fetchLesson } from '@/content/content.api';
 import { completePathItem, fetchActivePath } from '@/learning/learning.api';
@@ -223,6 +224,10 @@ function PathStepRow({
   // for the student to open — that's a content gap upstream, not a reason to
   // show a button that leads nowhere.
   const hasContent = Boolean(item.assessmentId || item.activityId || item.lessonId);
+  // PRD v2.5: a simple time estimate, never a countdown. Only the step's own
+  // content carries one; the topic's estimate covers the whole topic, so it
+  // would overstate a single activity and is not used here.
+  const estimate = formatAboutMinutes(item.activity?.estimatedMinutes ?? item.lesson?.estimatedMinutes);
 
   const accent = playAccent(accentIndex);
   // State outranks decoration: a step the learner cannot open, or has already
@@ -266,13 +271,12 @@ function PathStepRow({
               Step {stepNumber}
             </p>
             <p className={cn(text.heading, 'truncate text-lg')}>{title}</p>
-            <Badge
-              tone={STATUS_TONE[item.status]}
-              variant={isLocked ? 'soft' : 'solid'}
-              className="mt-2"
-            >
-              {STATUS_LABEL[item.status]}
-            </Badge>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Badge tone={STATUS_TONE[item.status]} variant={isLocked ? 'soft' : 'solid'}>
+                {STATUS_LABEL[item.status]}
+              </Badge>
+              {estimate && !isDone ? <span className="text-sm text-ink-muted">{estimate}</span> : null}
+            </div>
             {/*
               PRD v2.5: show locked steps *and* explain how they unlock. The
               server has always written the reason onto the step; it simply
@@ -349,6 +353,9 @@ function LessonModal({
     >
       <QueryBoundary isLoading={query.isPending} error={query.error}>
         <div className="flex flex-col gap-4">
+          {formatAboutMinutes(query.data?.estimatedMinutes) ? (
+            <p className="text-sm text-ink-muted">{formatAboutMinutes(query.data?.estimatedMinutes)}</p>
+          ) : null}
           {query.data?.summary ? (
             <p className="rounded-lg bg-primary-soft p-4 leading-body text-ink">{query.data.summary}</p>
           ) : null}

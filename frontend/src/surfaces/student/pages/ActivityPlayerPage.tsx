@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, CardBody, IconBack, IconSuccess, PageHeader, text } from '@/components/ui';
 import { QueryBoundary } from '@/components/feedback';
 import { cn } from '@/lib/cn';
+import { formatAboutMinutes } from '@/lib/format';
 import { fetchAssessment } from '@/assessment/assessment.api';
 import type { SubmitAttemptResult } from '@/assessment/assessment.types';
 import { fetchActivityDelivery } from '@/content/content.api';
@@ -123,6 +124,7 @@ function AssessmentActivityPlayer({ activityId, pathId, itemId, assignmentId, on
         {!result ? (
           <AssessmentPlayer
             assessmentId={activityId}
+            timeLimitMinutes={assessmentQuery.data?.timeLimitMinutes}
             onComplete={(finalResult) => {
               setResult(finalResult);
               if (pathId && itemId) completeStep.mutate();
@@ -224,6 +226,7 @@ function ActivityOnlyPlayer({ activityId, pathId, itemId, assignmentId, onExit }
           </Button>
         }
         title={activity?.title ?? 'Activity'}
+        description={formatAboutMinutes(activity?.estimatedMinutes) ?? undefined}
         actions={<ReportProblemButton activityId={activityId} />}
       />
 

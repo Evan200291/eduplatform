@@ -44,6 +44,20 @@ export function formatPercent(value: number | null | undefined): string {
   return typeof value === 'number' && Number.isFinite(value) ? `${Math.round(value)}%` : EMPTY;
 }
 
+/**
+ * `About 5 minutes` — PRD v2.5 wants learners to see a simple time estimate,
+ * never a countdown. Rounded to a friendly number so "about 7 minutes" does not
+ * pretend to a precision nobody measured. Null when there is nothing to say.
+ */
+export function formatAboutMinutes(minutes: number | null | undefined): string | null {
+  if (typeof minutes !== 'number' || !Number.isFinite(minutes) || minutes <= 0) return null;
+  if (minutes <= 2) return 'About 2 minutes';
+  if (minutes < 10) return `About ${Math.round(minutes)} minutes`;
+  if (minutes < 60) return `About ${Math.round(minutes / 5) * 5} minutes`;
+  const hours = Math.round((minutes / 60) * 2) / 2;
+  return hours === 1 ? 'About an hour' : `About ${hours} hours`;
+}
+
 /** `1h 20m` from a duration in seconds. */
 export function formatDuration(seconds: number | null | undefined): string {
   if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) return EMPTY;
