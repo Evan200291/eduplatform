@@ -17,10 +17,16 @@ import {
 import { ErrorState, QueryBoundary } from '@/components/feedback';
 import { qk } from '@/query/keys';
 import {
+  addAnswerOption,
+  addHint,
   createQuestion,
+  deleteAnswerOption,
+  deleteHint,
   deleteQuestion,
   fetchActivityQuestions,
   reorderQuestions,
+  updateAnswerOption,
+  updateHint,
   updateQuestion,
 } from '@/content/content.api';
 import {
@@ -104,12 +110,13 @@ function draftFromRow(row: QuestionRow): QuestionInput {
     correctBoolean: row.correctBoolean,
     correctText: row.correctText ?? [],
     options: row.options.map((option) => ({
+      id: option.id,
       label: option.label,
       isCorrect: option.isCorrect,
       feedback: option.feedback ?? '',
       matchKey: option.matchKey ?? '',
     })),
-    hints: row.hints.map((hint) => ({ body: hint.body, pointsCost: hint.pointsCost })),
+    hints: row.hints.map((hint) => ({ id: hint.id, body: hint.body, pointsCost: hint.pointsCost })),
   };
 }
 
@@ -275,6 +282,60 @@ export function QuestionsEditor({
   );
 }
 
+/**
+ * Brings an existing question's answers and hints in line with the draft.
+ * `forQuestionType` drops blank rows, so the same filter is applied to the
+ * draft here to keep the two lists index-aligned. The server cannot clear an
+ * option's feedback or match key once set (an empty string reads as "leave
+ * alone"), so an option that loses either is replaced instead.
+ */
+async function syncAnswers(existing: QuestionRow, draft: QuestionInput, payload: QuestionInput) {
+  const questionId = existing.id;
+  const draftOptions = payload.options ? (draft.options ?? []).filter((o) => o.label.trim().length > 0) : [];
+  const nextOptions = payload.options ?? [];
+  const keptOptionIds = new Set<string>();
+
+  for (const [index, next] of nextOptions.entries()) {
+    const id = draftOptions[index]?.id;
+    const before = id ? existing.options.find((option) => option.id === id) : undefined;
+    const cleared = before && ((before.feedback && !next.feedback) || (before.matchKey && !next.matchKey));
+    if (!before || cleared) {
+      await addAnswerOption(questionId, next);
+      continue;
+    }
+    keptOptionIds.add(before.id);
+    const changed =
+      before.label !== next.label ||
+      before.isCorrect !== Boolean(next.isCorrect) ||
+      before.sortOrder !== next.sortOrder ||
+      (before.feedback ?? undefined) !== next.feedback ||
+      (before.matchKey ?? undefined) !== next.matchKey;
+    if (changed) await updateAnswerOption(questionId, before.id, next);
+  }
+  for (const option of existing.options) {
+    if (!keptOptionIds.has(option.id)) await deleteAnswerOption(questionId, option.id);
+  }
+
+  const draftHints = (draft.hints ?? []).filter((hint) => hint.body.trim().length > 0);
+  const nextHints = payload.hints ?? [];
+  const keptHintIds = new Set<string>();
+  for (const [index, next] of nextHints.entries()) {
+    const id = draftHints[index]?.id;
+    const before = id ? existing.hints.find((hint) => hint.id === id) : undefined;
+    if (!before) {
+      await addHint(questionId, next);
+      continue;
+    }
+    keptHintIds.add(before.id);
+    if (before.body !== next.body || before.sortOrder !== next.sortOrder || before.pointsCost !== next.pointsCost) {
+      await updateHint(questionId, before.id, next);
+    }
+  }
+  for (const hint of existing.hints) {
+    if (!keptHintIds.has(hint.id)) await deleteHint(questionId, hint.id);
+  }
+}
+
 /** Create or edit one question, with only the fields its type actually uses. */
 function QuestionForm({
   activityId,
@@ -291,18 +352,24 @@ function QuestionForm({
     existing ? draftFromRow(existing) : emptyDraft(),
   );
   const [showIssues, setShowIssues] = useState(false);
+  const queryClient = useQueryClient();
 
   const shape = questionTypeShape(draft.type);
   const issues = questionAnswerKeyIssues(draft);
 
   const save = useMutation({
-    mutationFn: () => {
+    mutationFn: async (): Promise<unknown> => {
       const payload = forQuestionType(draft);
-      return existing
-        ? updateQuestion(activityId, existing.id, payload)
-        : createQuestion(activityId, payload);
+      if (!existing) return createQuestion(activityId, payload);
+      // The question route ignores nested answers and hints, so they are synced
+      // through their own routes first; the answer-key check on the question
+      // then runs against the answers as they now stand.
+      await syncAnswers(existing, draft, payload);
+      return updateQuestion(activityId, existing.id, { ...payload, options: undefined, hints: undefined });
     },
     onSuccess: onSaved,
+    // A partial sync still changed the server, so refresh even on failure.
+    onError: () => void queryClient.invalidateQueries({ queryKey: qk.activities.questions(activityId) }),
   });
 
   const set = <K extends keyof QuestionInput>(key: K, value: QuestionInput[K]) =>

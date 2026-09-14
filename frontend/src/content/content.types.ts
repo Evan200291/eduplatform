@@ -316,6 +316,8 @@ export interface QuestionRow {
 }
 
 export interface AnswerOptionInput {
+  /** Set on a draft of an option that already exists; never sent to the server. */
+  id?: string;
   label: string;
   isCorrect?: boolean;
   sortOrder?: number;
@@ -324,6 +326,8 @@ export interface AnswerOptionInput {
 }
 
 export interface HintInput {
+  /** Set on a draft of a hint that already exists; never sent to the server. */
+  id?: string;
   body: string;
   sortOrder?: number;
   pointsCost?: number;
