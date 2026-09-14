@@ -28,6 +28,7 @@ import { formatDate } from '@/lib/format';
 import { paths } from '@/routes/paths';
 import { fetchSchool, setSchoolStatus, updateSchool } from '@/tenancy/tenancy.api';
 import type { TenantStatus } from '@/tenancy/tenancy.types';
+import { SchoolSettingsCard } from './SettingsPage';
 
 const STATUS_TONE: Record<TenantStatus, BadgeTone> = {
   ACTIVE: 'success',
@@ -43,6 +44,8 @@ export function SchoolDetailPage() {
   const queryClient = useQueryClient();
   const canUpdate = useCan('school.update');
   const canArchive = useCan('school.archive');
+  const canReadSettings = useCan('school.settings.read');
+  const canWriteSettings = useCan('school.settings.write');
 
   const [isEditOpen, setEditOpen] = useState(false);
   const [isStatusOpen, setStatusOpen] = useState(false);
@@ -134,6 +137,8 @@ export function SchoolDetailPage() {
                 )}
               </CardBody>
             </Card>
+
+            {canReadSettings ? <SchoolSettingsCard schoolId={school.id} canWrite={canWriteSettings} /> : null}
           </div>
         ) : null}
       </QueryBoundary>

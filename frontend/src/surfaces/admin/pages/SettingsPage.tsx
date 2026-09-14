@@ -20,7 +20,12 @@ import { useCan } from '@/auth';
 import { qk } from '@/query/keys';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { formatDateTime } from '@/lib/format';
-import { fetchCurrentSchoolSettings, updateCurrentSchoolSettings } from '@/tenancy/tenancy.api';
+import {
+  fetchCurrentSchoolSettings,
+  fetchSchoolSettings,
+  updateCurrentSchoolSettings,
+  updateSchoolSettings,
+} from '@/tenancy/tenancy.api';
 import {
   fetchRetentionOptions,
   fetchRetentionPolicies,
@@ -85,16 +90,47 @@ export function SettingsPage() {
   );
 }
 
-function SettingsForm({ settings, canWrite }: { settings: SchoolSettings; canWrite: boolean }) {
+/**
+ * One school's settings as platform staff see them from the school's own page,
+ * without switching into that school first. Same form, different routes.
+ */
+export function SchoolSettingsCard({ schoolId, canWrite }: { schoolId: string; canWrite: boolean }) {
+  const query = useQuery({
+    queryKey: qk.schoolSettings.detail(schoolId),
+    queryFn: () => fetchSchoolSettings(schoolId),
+  });
+  return (
+    <Card>
+      <CardHeader title="Settings" description="This school's policies. Changes are audited against your name." />
+      <CardBody>
+        <QueryBoundary isLoading={query.isPending} error={query.error} onRetry={() => void query.refetch()}>
+          {query.data ? <SettingsForm settings={query.data} canWrite={canWrite} schoolId={schoolId} /> : null}
+        </QueryBoundary>
+      </CardBody>
+    </Card>
+  );
+}
+
+function SettingsForm({
+  settings,
+  canWrite,
+  schoolId,
+}: {
+  settings: SchoolSettings;
+  canWrite: boolean;
+  /** Set when editing a school other than the one signed in to. */
+  schoolId?: string;
+}) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(settings);
 
   useEffect(() => setForm(settings), [settings]);
 
   const save = useMutation({
-    mutationFn: (input: Partial<SchoolSettings>) => updateCurrentSchoolSettings(input),
+    mutationFn: (input: Partial<SchoolSettings>) =>
+      schoolId ? updateSchoolSettings(schoolId, input) : updateCurrentSchoolSettings(input),
     onSuccess: (updated) => {
-      queryClient.setQueryData(qk.schoolSettings.current, updated);
+      queryClient.setQueryData(schoolId ? qk.schoolSettings.detail(schoolId) : qk.schoolSettings.current, updated);
     },
   });
 
