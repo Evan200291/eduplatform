@@ -5,6 +5,64 @@ here instead of re-deriving what the last one learned.
 
 ---
 
+## 2026-09-14 — Frontend: every remaining backend feature has a screen
+
+Branch: `feat/content-authoring-and-moderation`, now on `origin`. All of the
+following pass in `frontend/`: `npx tsc -b --noEmit`, `npx eslint src` (one
+old warning in `OnboardingTour.tsx`), `npm test` (36 tests), and
+`npm run build` (no chunk-size warning).
+
+How to test it, page by page and with the seed logins: `TESTING-GUIDE.txt`
+at the repo root. That file is gitignored because it holds credentials.
+
+### Shipped since 09-09
+
+| Area | What landed |
+|---|---|
+| Teacher: learners | Mastery override, teacher judgements, full notes workflow, answer-by-answer review and re-mark, recognition record with take-back and revoke, mission re-check |
+| Teacher: classes and work | Class progress, streaks at risk, quiet buddies; recommendations raised by hand; path steps add/remove/reorder; plan paths for many learners, archive a path; add learners to set work |
+| Learners | Start and hand in set work; report a problem; badges to earn; points history; buddy rename and diary; new-badge banner; stop a check part way; opening a step marks it started |
+| Messages | Direct messages and announcements; unread count across the whole inbox; clear read ones |
+| Content | Curriculum tree editing, lesson and activity editing, publish with a change record, objectives, version history, media library, ownership register, moderation decision log and proactive checks |
+| Assessment | Reorder items |
+| Admin | People, invitations and groups; gamification editors; mission and leaderboard archive; staff standings view; privacy and consent; data request edits; audit before/after and target history; feature rules and the "what would they see" explainer; terms, class archive, weekly subject minutes; switch branding back to default |
+| Reporting | Saved reports (with the 40-character honesty notes), date window, CSV/Excel/PDF export, export history with download |
+| Commercial | `/admin/agreements` — create, edit, renew, cancel agreements; plan comparison for schools |
+| Support | Requester satisfaction rating; agent triage; category policy shown before raising |
+| Platform | Overview tab, platform settings (secrets replace-only), incident summary and record editing, release note authoring; school settings from the school's page |
+| Performance | Each surface is a lazy chunk; main bundle 936 KB → 448 KB |
+
+### Bugs found and fixed on the way
+
+- Editing an existing question's answers or hints was silently discarded (the
+  question PATCH ignores nested rows).
+- Term dates were read and written as `startsOn`/`endsOn`; the server uses
+  `startsAt`/`endsAt`. Dates rendered blank and creating a term failed.
+- Every incident route returns a wrapper; the ops page read it as a flat row,
+  so incident titles and severities were blank.
+- "Mark all read" counted only the current page.
+- Several wrappers typed responses the server does not send (platform
+  overview, setting catalogue, release notes, support policies).
+
+### Things worth knowing
+
+- `UNWIRED-ROUTES.md` was rewritten. What is left unused are single-record
+  fetches whose data the list calls already return; each is listed with its
+  reason.
+- Logging in through the in-app browser was not possible in this session:
+  the assistant cannot type passwords into sign-in forms. Screens were
+  verified by typecheck, lint, tests, build and a check against the backend
+  schemas. The click-through is `TESTING-GUIDE.txt`.
+
+### Not done, and why
+
+Unchanged from 09-09: organisation-level reporting (no org-level report
+exists in the backend), backend authorisation tests (backend is out of this
+session's scope), auto-approve removal, the daily points cap and mini-games
+(all awaiting PM decisions), and SSO (not in the backend).
+
+---
+
 ## 2026-09-09 — Frontend: reaching the routes the server already served
 
 Branch: `feat/content-authoring-and-moderation` (6 commits, not yet merged or

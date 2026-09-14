@@ -49,3 +49,5 @@ _pdf_text.txt
 # children's data, so they must not sit in a repo.
 TEST-ACCESS.md
 scratchpad/
+# Local testing guide with seed credentials - never commit
+TESTING-GUIDE.txt
