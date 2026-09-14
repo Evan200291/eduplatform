@@ -22,6 +22,7 @@ import { qk } from '@/query/keys';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import {
   addStudentsToClass,
+  archiveClass,
   archiveGrade,
   archiveSubject,
   assignClassTeacher,
@@ -29,6 +30,7 @@ import {
   createGrade,
   createSubject,
   createTerm,
+  fetchClass,
   fetchClasses,
   fetchClassRoster,
   fetchClassTeachers,
@@ -38,10 +40,12 @@ import {
   removeClassTeacher,
   removeStudentsFromClass,
   setClassSubjects,
+  updateClassSubject,
   updateGrade,
   updateSubject,
+  updateTerm,
 } from '@/academic/academic.api';
-import type { SchoolClass } from '@/academic/academic.types';
+import type { AcademicTerm, SchoolClass } from '@/academic/academic.types';
 import { fetchUsers } from '@/users/users.api';
 import { formatDate } from '@/lib/format';
 
@@ -177,14 +181,7 @@ function TermsSection({ canWrite }: { canWrite: boolean }) {
         ) : (
           <ul className="flex flex-col gap-2 text-sm">
             {query.data?.items.map((term) => (
-              <li key={term.id} className="flex items-center justify-between">
-                <span className="text-ink">
-                  {term.name} {term.isCurrent ? <Badge tone="success">Current</Badge> : null}
-                </span>
-                <span className="text-ink-muted">
-                  {formatDate(term.startsOn)} – {formatDate(term.endsOn)}
-                </span>
-              </li>
+              <TermRow key={term.id} term={term} canWrite={canWrite} />
             ))}
           </ul>
         )}
@@ -196,8 +193,8 @@ function TermsSection({ canWrite }: { canWrite: boolean }) {
             isPending={create.isPending}
             fields={[
               { key: 'name', label: 'Name', required: true },
-              { key: 'startsOn', label: 'Starts on', type: 'date', required: true },
-              { key: 'endsOn', label: 'Ends on', type: 'date', required: true },
+              { key: 'startsAt', label: 'Starts on', type: 'date', required: true },
+              { key: 'endsAt', label: 'Ends on', type: 'date', required: true },
             ]}
             onCancel={() => setOpen(false)}
             onSubmit={(values) => create.mutate(values)}
@@ -205,6 +202,80 @@ function TermsSection({ canWrite }: { canWrite: boolean }) {
         </Modal>
       ) : null}
     </Section>
+  );
+}
+
+/** A term can be renamed, re-dated, or made the current one. It is never archived. */
+function TermRow({ term, canWrite }: { term: AcademicTerm; canWrite: boolean }) {
+  const queryClient = useQueryClient();
+  const [isEditing, setEditing] = useState(false);
+  const [name, setName] = useState(term.name);
+  const [startsAt, setStartsAt] = useState(term.startsAt.slice(0, 10));
+  const [endsAt, setEndsAt] = useState(term.endsAt.slice(0, 10));
+  const done = () => {
+    void queryClient.invalidateQueries({ queryKey: qk.terms.all });
+    setEditing(false);
+  };
+  const save = useMutation({
+    mutationFn: () => updateTerm(term.id, { name: name.trim(), startsAt, endsAt }),
+    onSuccess: done,
+  });
+  const makeCurrent = useMutation({ mutationFn: () => updateTerm(term.id, { isCurrent: true }), onSuccess: done });
+
+  if (isEditing) {
+    const blocked =
+      name.trim().length < 2 ? 'A name needs two characters.' : endsAt <= startsAt ? 'A term must end after it starts.' : null;
+    return (
+      <li className="flex flex-col gap-3 rounded-md border border-border p-3">
+        {save.error ? <ErrorState error={save.error} /> : null}
+        <Field label="Name">
+          <Input value={name} onChange={(event) => setName(event.target.value)} />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Starts on">
+            <Input type="date" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} />
+          </Field>
+          <Field label="Ends on">
+            <Input type="date" value={endsAt} onChange={(event) => setEndsAt(event.target.value)} />
+          </Field>
+        </div>
+        {blocked ? <p className="text-sm text-ink-muted">{blocked}</p> : null}
+        <div className="flex gap-2">
+          <Button isLoading={save.isPending} disabled={blocked !== null} onClick={() => save.mutate()}>
+            Save
+          </Button>
+          <Button variant="outline" disabled={save.isPending} onClick={() => setEditing(false)}>
+            Cancel
+          </Button>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2">
+      <span className="text-ink">
+        {term.name} {term.isCurrent ? <Badge tone="success">Current</Badge> : null}
+      </span>
+      <span className="flex items-center gap-2">
+        <span className="text-ink-muted">
+          {formatDate(term.startsAt)} to {formatDate(term.endsAt)}
+        </span>
+        {canWrite ? (
+          <>
+            {!term.isCurrent ? (
+              <Button size="sm" variant="ghost" isLoading={makeCurrent.isPending} onClick={() => makeCurrent.mutate()}>
+                Make current
+              </Button>
+            ) : null}
+            <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+              Edit
+            </Button>
+          </>
+        ) : null}
+      </span>
+      {makeCurrent.error ? <ErrorState error={makeCurrent.error} /> : null}
+    </li>
   );
 }
 
@@ -274,6 +345,7 @@ function ClassesSection({ canWrite }: { canWrite: boolean }) {
   const [isOpen, setOpen] = useState(false);
   const [rosterFor, setRosterFor] = useState<SchoolClass | null>(null);
   const [staffFor, setStaffFor] = useState<SchoolClass | null>(null);
+  const [archiving, setArchiving] = useState<SchoolClass | null>(null);
   const query = useQuery({ queryKey: qk.classes.list(), queryFn: () => fetchClasses() });
   const create = useMutation({
     mutationFn: (input: Record<string, unknown>) => createClass(input),
@@ -314,6 +386,9 @@ function ClassesSection({ canWrite }: { canWrite: boolean }) {
                       <Button size="sm" variant="ghost" onClick={() => setStaffFor(klass)}>
                         Staff
                       </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setArchiving(klass)}>
+                        {klass.archivedAt ? 'Restore' : 'Archive'}
+                      </Button>
                     </>
                   ) : null}
                 </span>
@@ -342,7 +417,61 @@ function ClassesSection({ canWrite }: { canWrite: boolean }) {
       {staffFor ? (
         <ClassStaffModal klass={staffFor} onClose={() => setStaffFor(null)} />
       ) : null}
+      {archiving ? <ArchiveClassModal klass={archiving} onClose={() => setArchiving(null)} /> : null}
     </Section>
+  );
+}
+
+/**
+ * Archiving a class ends every learner's membership at once. Their history is
+ * kept for reporting, but the class leaves their "my classes" list. The same
+ * route restores an archived class; memberships are not reopened.
+ */
+function ArchiveClassModal({ klass, onClose }: { klass: SchoolClass; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [reason, setReason] = useState('');
+  const restoring = Boolean(klass.archivedAt);
+  const mutation = useMutation({
+    mutationFn: () => archiveClass(klass.id, reason.trim()),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.classes.all });
+      onClose();
+    },
+  });
+  return (
+    <Modal
+      isOpen
+      onClose={onClose}
+      closeOnBackdropClick={false}
+      title={restoring ? `Restore ${klass.name}?` : `Archive ${klass.name}?`}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>
+            Cancel
+          </Button>
+          <Button
+            variant={restoring ? 'primary' : 'danger'}
+            isLoading={mutation.isPending}
+            disabled={reason.trim().length < 3}
+            onClick={() => mutation.mutate()}
+          >
+            {restoring ? 'Restore' : 'Archive'}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {mutation.error ? <ErrorState error={mutation.error} /> : null}
+        <p className="text-ink">
+          {restoring
+            ? 'The class becomes active again. Learners who left when it was archived are not re-added; enrol them again from Students.'
+            : `All ${klass.studentCount ?? 0} learners leave the class now. Their work and progress stay on record for reports, but the class disappears from their lists and from teacher class lists.`}
+        </p>
+        <Field label="Reason" isRequired hint="Kept on the record. At least three characters.">
+          <Input value={reason} onChange={(event) => setReason(event.target.value)} />
+        </Field>
+      </div>
+    </Modal>
   );
 }
 
@@ -784,56 +913,107 @@ function ClassStaffModal({ klass, onClose }: { klass: SchoolClass; onClose: () =
 
 /** Which subjects a class covers. Replaced as a whole list, as the endpoint expects. */
 function ClassSubjectsPanel({ klass }: { klass: SchoolClass }) {
+  const queryClient = useQueryClient();
   const subjects = useQuery({ queryKey: qk.subjects.list(), queryFn: () => fetchSubjects() });
+  const detail = useQuery({ queryKey: qk.classes.detail(klass.id), queryFn: () => fetchClass(klass.id) });
   const [selected, setSelected] = useState<string[] | null>(null);
+  const [minutes, setMinutes] = useState<Record<string, string>>({});
 
-  const save = useMutation({ mutationFn: () => setClassSubjects(klass.id, selected ?? []) });
+  const saved = detail.data?.classSubjects ?? [];
+  const savedIds = saved.map((row) => row.subject.id);
+  const current = selected ?? savedIds;
+  const minutesFor = (subjectId: string) =>
+    minutes[subjectId] ?? String(saved.find((row) => row.subject.id === subjectId)?.weeklyMinutes ?? '');
+
+  /**
+   * The subject list is replaced wholesale (that is what the PUT accepts), then
+   * each subject's weekly minutes are set one by one through the PATCH route.
+   */
+  const save = useMutation({
+    mutationFn: async () => {
+      if (selected !== null) await setClassSubjects(klass.id, selected);
+      for (const subjectId of current) {
+        const typed = minutes[subjectId];
+        if (typed === undefined || typed === '') continue;
+        await updateClassSubject(klass.id, { subjectId, weeklyMinutes: Number(typed) });
+      }
+    },
+    onSuccess: () => {
+      setSelected(null);
+      setMinutes({});
+      void queryClient.invalidateQueries({ queryKey: qk.classes.detail(klass.id) });
+    },
+  });
 
   const all = subjects.data?.items ?? [];
-  const current = selected ?? [];
+  const badMinutes = current.some((id) => {
+    const typed = minutes[id];
+    if (typed === undefined || typed === '') return false;
+    const value = Number(typed);
+    return !Number.isInteger(value) || value < 1 || value > 3000;
+  });
+  const dirty = selected !== null || Object.keys(minutes).length > 0;
 
   return (
     <div className="border-t border-border pt-4">
       <p className="mb-2 text-sm font-medium text-ink">Subjects taught</p>
       <p className="mb-2 text-xs text-ink-muted">
-        Tick every subject this class covers, then save. The list replaces whatever was there before.
+        Tick every subject this class covers and, if you like, how many minutes a week it gets. Save replaces
+        the whole list.
       </p>
       {save.error ? <ErrorState error={save.error} /> : null}
       <QueryBoundary
-        isLoading={subjects.isPending}
-        error={subjects.error}
-        onRetry={() => void subjects.refetch()}
+        isLoading={subjects.isPending || detail.isPending}
+        error={subjects.error ?? detail.error}
+        onRetry={() => {
+          void subjects.refetch();
+          void detail.refetch();
+        }}
       >
         {all.length === 0 ? (
           <EmptyState title="No subjects defined" description="Add a subject first." />
         ) : (
           <div className="flex flex-col gap-2">
-            {all.map((subject) => (
-              <Checkbox
-                key={subject.id}
-                label={subject.name}
-                checked={current.includes(subject.id)}
-                onChange={(event) =>
-                  setSelected(
-                    event.target.checked
-                      ? [...current, subject.id]
-                      : current.filter((id) => id !== subject.id),
-                  )
-                }
-              />
-            ))}
+            {all.map((subject) => {
+              const ticked = current.includes(subject.id);
+              return (
+                <div key={subject.id} className="flex flex-wrap items-center justify-between gap-2">
+                  <Checkbox
+                    label={subject.name}
+                    checked={ticked}
+                    onChange={(event) =>
+                      setSelected(
+                        event.target.checked ? [...current, subject.id] : current.filter((id) => id !== subject.id),
+                      )
+                    }
+                  />
+                  {ticked ? (
+                    <label className="flex items-center gap-2 text-xs text-ink-muted">
+                      Minutes a week
+                      <Input
+                        type="number"
+                        min={1}
+                        max={3000}
+                        className="w-24"
+                        value={minutesFor(subject.id)}
+                        onChange={(event) => setMinutes({ ...minutes, [subject.id]: event.target.value })}
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              );
+            })}
+            {badMinutes ? <p className="text-sm text-ink-muted">Minutes are whole numbers from 1 to 3000.</p> : null}
             <div>
               <Button
                 size="sm"
                 isLoading={save.isPending}
-                disabled={selected === null}
+                disabled={!dirty || badMinutes}
                 onClick={() => save.mutate()}
               >
                 Save subjects
               </Button>
-              {save.isSuccess ? (
-                <span className="ml-2 text-sm text-success-strong">Saved</span>
-              ) : null}
+              {save.isSuccess && !dirty ? <span className="ml-2 text-sm text-success-strong">Saved</span> : null}
             </div>
           </div>
         )}

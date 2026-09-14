@@ -11,8 +11,9 @@ export interface Grade {
 export interface AcademicTerm {
   id: string;
   name: string;
-  startsOn: string;
-  endsOn: string;
+  /** The server names these `startsAt` / `endsAt`; the old `startsOn` names never matched. */
+  startsAt: string;
+  endsAt: string;
   isCurrent: boolean;
 }
 
@@ -30,6 +31,10 @@ export interface SchoolClass {
   code: string;
   gradeId: string | null;
   studentCount?: number;
+  isActive?: boolean;
+  archivedAt?: string | null;
+  /** On the detail response each row also carries its id and weekly minutes. */
+  classSubjects?: { id?: string; weeklyMinutes?: number | null; subject: { id: string; name: string } }[];
 }
 
 /** The student's own home-screen class list — a plain array, not paginated. */

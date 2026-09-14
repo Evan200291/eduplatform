@@ -107,7 +107,10 @@ export function archiveSubject(subjectId: string, reason: string): Promise<Subje
   return apiPost<Subject>(`/subjects/${encodeURIComponent(subjectId)}/archive`, { reason });
 }
 
-export function updateTerm(termId: string, input: Record<string, unknown>): Promise<AcademicTerm> {
+export function updateTerm(
+  termId: string,
+  input: { name?: string; startsAt?: string; endsAt?: string; isCurrent?: boolean },
+): Promise<AcademicTerm> {
   return apiPatch<AcademicTerm>(`/terms/${encodeURIComponent(termId)}`, input);
 }
 
