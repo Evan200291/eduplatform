@@ -1,6 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Badge, Button, Card, CardBody, IconStart, IconSuccess, ProgressBar, Spinner, text } from '@/components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  IconStart,
+  IconSuccess,
+  ProgressBar,
+  Spinner,
+  text,
+} from '@/components/ui';
 import { ErrorState } from '@/components/feedback';
 import { cn } from '@/lib/cn';
 import {
@@ -18,6 +28,8 @@ import { ReportProblemButton } from './ReportProblem';
 export interface AssessmentPlayerProps {
   assessmentId: string;
   isPractice?: boolean;
+  /** Set when a teacher or the school deliberately timed this assessment. */
+  timeLimitMinutes?: number | null;
   onComplete: (result: SubmitAttemptResult) => void;
 }
 
@@ -30,17 +42,32 @@ export interface AssessmentPlayerProps {
  * differ only in which `assessmentId` is passed in. Placement/band language is
  * deliberately never shown here: `SubmitAttemptResult` withholds it from a
  * learner server-side, and this component doesn't try to reconstruct it.
+ *
+ * PRD v2.5 on time: a visible time limit appears only when the assessment was
+ * deliberately timed. The server stamps `expiresAt` on the attempt and refuses
+ * answers after it, so the clock here reads that value rather than keeping its
+ * own. When it runs out the attempt is closed (the server records it as
+ * expired, not abandoned) and the learner is told kindly what happened.
+ *
+ * After a wrong answer the next question waits for the learner, so the
+ * explanation or clue is actually read rather than replaced after a moment.
  */
-export function AssessmentPlayer({ assessmentId, isPractice, onComplete }: AssessmentPlayerProps) {
+export function AssessmentPlayer({ assessmentId, isPractice, timeLimitMinutes, onComplete }: AssessmentPlayerProps) {
   const queryClient = useQueryClient();
   const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [lastFeedback, setLastFeedback] = useState<{ isCorrect?: boolean; feedback?: string } | null>(null);
+  const [waitingOn, setWaitingOn] = useState<string | null>(null);
   const [confirmingStop, setConfirmingStop] = useState(false);
-  const [stopped, setStopped] = useState(false);
+  const [ended, setEnded] = useState<'stopped' | 'time-up' | null>(null);
 
   const start = useMutation({
     mutationFn: () => startAttempt(assessmentId, { isPractice }),
-    onSuccess: (attempt) => setAttemptId(attempt.id),
+    onSuccess: (attempt) => {
+      setAttemptId(attempt.id);
+      setExpiresAt(attempt.expiresAt ? Date.parse(attempt.expiresAt) : null);
+      setEnded(null);
+    },
   });
 
   const nextItemQuery = useQuery({
@@ -49,14 +76,27 @@ export function AssessmentPlayer({ assessmentId, isPractice, onComplete }: Asses
     enabled: Boolean(attemptId),
   });
 
+  const advance = () => {
+    setLastFeedback(null);
+    setWaitingOn(null);
+    if (attemptId) void queryClient.invalidateQueries({ queryKey: qk.assessment.nextItem(attemptId) });
+  };
+
   const answer = useMutation({
     mutationFn: (input: SubmitResponseInput) => submitResponse(attemptId as string, input),
-    onSuccess: (result) => {
+    onSuccess: (result, input) => {
       setLastFeedback(
         result.isCorrect === undefined && !result.feedback
           ? { feedback: undefined }
           : { isCorrect: result.isCorrect, feedback: result.feedback },
       );
+      if (result.isCorrect === false) {
+        setWaitingOn(input.questionId);
+      } else {
+        // A short pause so a correct/recorded badge is readable before the
+        // next question replaces it.
+        window.setTimeout(advance, 700);
+      }
     },
   });
 
@@ -70,33 +110,61 @@ export function AssessmentPlayer({ assessmentId, isPractice, onComplete }: Asses
   });
 
   /** Closing the attempt properly, so a half-finished one is not left open or counted. */
-  const stop = useMutation({
-    mutationFn: () => abandonAttempt(attemptId as string, 'Stopped by the learner'),
-    onSuccess: () => {
+  const close = useMutation({
+    mutationFn: (reason: 'stopped' | 'time-up') =>
+      abandonAttempt(attemptId as string, reason === 'time-up' ? 'Time limit reached' : 'Stopped by the learner'),
+    onSettled: (_data, _error, reason) => {
+      // Even if the call fails the attempt cannot take more answers, so the
+      // learner is not left facing a question the server will refuse.
       setConfirmingStop(false);
       setAttemptId(null);
-      setStopped(true);
+      setExpiresAt(null);
+      setWaitingOn(null);
+      setLastFeedback(null);
+      setEnded(reason);
       start.reset();
     },
   });
+
+  const secondsLeft = useSecondsLeft(expiresAt);
+  const { mutate: closeAttempt, isPending: isClosing } = close;
+  useEffect(() => {
+    if (secondsLeft === 0 && attemptId && !isClosing) closeAttempt('time-up');
+  }, [secondsLeft, attemptId, isClosing, closeAttempt]);
 
   if (!attemptId) {
     return (
       <Card className="border-2 border-primary-muted bg-primary-soft">
         <CardBody className="flex flex-col items-center gap-4 p-8 text-center">
           {start.error ? <ErrorState error={start.error} /> : null}
-          {stopped ? (
+          {ended === 'stopped' ? (
             <p className="text-ink">You stopped that one. Nothing you answered counts against you — start again whenever you like.</p>
           ) : null}
-          <p className={cn(text.heading, 'text-xl')}>{stopped ? 'Start again?' : 'Ready when you are'}</p>
-          <Button
-            size="lg"
-            isLoading={start.isPending}
-            leadingIcon={<IconStart aria-hidden className="h-5 w-5" />}
-            onClick={() => start.mutate()}
-          >
-            Start
-          </Button>
+          {ended === 'time-up' ? (
+            <p className="text-ink" role="status">
+              Time is up for this one. The answers you gave before the time ran out are kept, and your teacher can see
+              how far you got.
+            </p>
+          ) : null}
+          <p className={cn(text.heading, 'text-xl')}>
+            {ended === 'stopped' ? 'Start again?' : ended === 'time-up' ? 'Well done for trying' : 'Ready when you are'}
+          </p>
+          {timeLimitMinutes && ended !== 'time-up' ? (
+            <p className="text-ink-muted">
+              This one has a time limit of {timeLimitMinutes} minute{timeLimitMinutes === 1 ? '' : 's'}. The clock
+              starts when you press Start.
+            </p>
+          ) : null}
+          {ended !== 'time-up' ? (
+            <Button
+              size="lg"
+              isLoading={start.isPending}
+              leadingIcon={<IconStart aria-hidden className="h-5 w-5" />}
+              onClick={() => start.mutate()}
+            >
+              Start
+            </Button>
+          ) : null}
         </CardBody>
       </Card>
     );
@@ -140,12 +208,13 @@ export function AssessmentPlayer({ assessmentId, isPractice, onComplete }: Asses
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border-2 border-primary-muted bg-primary-soft p-4">
+      <div className="flex flex-col gap-3 rounded-lg border-2 border-primary-muted bg-primary-soft p-4">
         <ProgressBar
           label={`Question ${data.itemsAnswered + 1} of ${data.itemsTotal || '?'}`}
           value={data.itemsTotal ? (data.itemsAnswered / data.itemsTotal) * 100 : 0}
           showValue={false}
         />
+        {secondsLeft !== null ? <TimeLeft secondsLeft={secondsLeft} /> : null}
       </div>
       {data.item.questions.map((question) => (
         <QuestionCard
@@ -153,34 +222,21 @@ export function AssessmentPlayer({ assessmentId, isPractice, onComplete }: Asses
           question={question}
           isSubmitting={answer.isPending}
           feedback={answer.isSuccess && answer.variables?.questionId === question.id ? lastFeedback : null}
-          onSubmit={(response, hintsUsed) => {
-            answer.mutate(
-              { questionId: question.id, response, hintsUsed },
-              {
-                onSuccess: () => {
-                  // A short pause so a correct/incorrect badge is actually readable
-                  // before the next question replaces it.
-                  window.setTimeout(() => {
-                    setLastFeedback(null);
-                    void queryClient.invalidateQueries({ queryKey: qk.assessment.nextItem(attemptId) });
-                  }, 700);
-                },
-              },
-            );
-          }}
+          onContinue={waitingOn === question.id ? advance : undefined}
+          onSubmit={(response, hintsUsed) => answer.mutate({ questionId: question.id, response, hintsUsed })}
         />
       ))}
       {answer.error ? <ErrorState error={answer.error} /> : null}
       {isPractice ? <Badge tone="info">Practice — this won&apos;t count toward your score.</Badge> : null}
-      {stop.error ? <ErrorState error={stop.error} /> : null}
+      {close.error ? <ErrorState error={close.error} /> : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
         {confirmingStop ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-ink">Stop now? You can start again later.</span>
-            <Button size="sm" variant="danger" isLoading={stop.isPending} onClick={() => stop.mutate()}>
+            <Button size="sm" variant="danger" isLoading={close.isPending} onClick={() => close.mutate('stopped')}>
               Yes, stop
             </Button>
-            <Button size="sm" variant="outline" disabled={stop.isPending} onClick={() => setConfirmingStop(false)}>
+            <Button size="sm" variant="outline" disabled={close.isPending} onClick={() => setConfirmingStop(false)}>
               Keep going
             </Button>
           </div>
@@ -191,6 +247,47 @@ export function AssessmentPlayer({ assessmentId, isPractice, onComplete }: Asses
         )}
         <ReportProblemButton key={data.item.activityId} activityId={data.item.activityId} />
       </div>
+    </div>
+  );
+}
+
+/** Seconds until `expiresAt`, ticking once a second. Null when there is no limit. */
+function useSecondsLeft(expiresAt: number | null): number | null {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (expiresAt === null) return;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [expiresAt]);
+  return expiresAt === null ? null : Math.max(0, Math.ceil((expiresAt - now) / 1000));
+}
+
+/**
+ * The visible clock. Screen readers are told at five minutes and at one
+ * minute rather than every second, which would drown out the questions.
+ */
+function TimeLeft({ secondsLeft }: { secondsLeft: number }) {
+  const minutes = Math.floor(secondsLeft / 60);
+  const seconds = secondsLeft % 60;
+  const isLow = secondsLeft <= 60;
+  const announcement =
+    secondsLeft <= 60 && secondsLeft > 55
+      ? 'One minute left.'
+      : secondsLeft <= 300 && secondsLeft > 295
+        ? 'Five minutes left.'
+        : '';
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-sm text-ink-muted">Time left</span>
+      <Badge tone={isLow ? 'warning' : 'neutral'} variant={isLow ? 'solid' : 'soft'}>
+        <span role="timer" aria-label={`${minutes} minutes ${seconds} seconds left`} className="tabular-nums">
+          {minutes}:{String(seconds).padStart(2, '0')}
+        </span>
+      </Badge>
+      <span className="sr-only" aria-live="polite">
+        {announcement}
+      </span>
     </div>
   );
 }

@@ -3,6 +3,8 @@ import { Button, Card, CardBody, IconHelp, Input, focusRing, text } from '@/comp
 import { cn } from '@/lib/cn';
 import type { DeliveryQuestion } from '@/content/content.types';
 import type { ResponseInput } from '@/assessment/assessment.types';
+import { isYoungLearner } from '@/theme/age-mode';
+import { useAgeMode } from '@/theme/theme-context';
 
 export interface QuestionCardProps {
   question: DeliveryQuestion;
@@ -10,6 +12,8 @@ export interface QuestionCardProps {
   isSubmitting: boolean;
   /** Only present when the assessment shows feedback immediately. */
   feedback?: { isCorrect?: boolean; feedback?: string } | null;
+  /** Set after a wrong answer: the next question waits until the learner is ready. */
+  onContinue?: () => void;
 }
 
 /**
@@ -64,7 +68,9 @@ function shuffle<T>(items: T[]): T[] {
  * `question.options`) can be paired against one of those terms by
  * click-to-select.
  */
-export function QuestionCard({ question, onSubmit, isSubmitting, feedback }: QuestionCardProps) {
+export function QuestionCard({ question, onSubmit, isSubmitting, feedback, onContinue }: QuestionCardProps) {
+  // PRD v2.5: younger learners get more guidance, older ones concise feedback.
+  const young = isYoungLearner(useAgeMode());
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [boolValue, setBoolValue] = useState<boolean | null>(null);
   const [numericValue, setNumericValue] = useState('');
@@ -365,12 +371,13 @@ export function QuestionCard({ question, onSubmit, isSubmitting, feedback }: Que
             ))}
             {hintsRevealed < question.hints.length ? (
               <Button
-                variant="ghost"
-                size="sm"
+                variant={young ? 'outline' : 'ghost'}
+                size={young ? 'md' : 'sm'}
                 leadingIcon={<IconHelp aria-hidden className="h-4 w-4" />}
                 onClick={() => setHintsRevealed((n) => n + 1)}
+                className="self-start"
               >
-                Get a hint
+                {young ? (hintsRevealed === 0 ? 'Need a clue?' : 'Another clue') : 'Get a hint'}
               </Button>
             ) : null}
           </div>
@@ -379,7 +386,7 @@ export function QuestionCard({ question, onSubmit, isSubmitting, feedback }: Que
         {feedback ? (
           <div
             className={cn(
-              'flex flex-col gap-1 rounded-lg border-2 p-4',
+              'flex flex-col gap-2 rounded-lg border-2 p-4',
               feedback.isCorrect
                 ? 'border-success-muted bg-success-soft'
                 : 'border-secondary-muted bg-secondary-soft',
@@ -393,12 +400,24 @@ export function QuestionCard({ question, onSubmit, isSubmitting, feedback }: Que
               )}
             >
               {feedback.isCorrect === true
-                ? 'Correct!'
+                ? young
+                  ? 'Brilliant, you got it!'
+                  : 'Correct.'
                 : feedback.isCorrect === false
-                  ? 'Not quite — nice try.'
+                  ? young
+                    ? 'Not quite, but good try!'
+                    : 'Not this time.'
                   : 'Answer recorded.'}
             </p>
             {feedback.feedback ? <p className="leading-body text-ink">{feedback.feedback}</p> : null}
+            {feedback.isCorrect === false ? (
+              <WrongAnswerHelp young={young} hints={question.hints.map((hint) => hint.body)} />
+            ) : null}
+            {onContinue ? (
+              <Button size="lg" className="mt-1 self-start" onClick={onContinue}>
+                Next question
+              </Button>
+            ) : null}
           </div>
         ) : (
           <Button
@@ -413,5 +432,40 @@ export function QuestionCard({ question, onSubmit, isSubmitting, feedback }: Que
         )}
       </CardBody>
     </Card>
+  );
+}
+
+/**
+ * What follows a wrong answer (PRD v2.5: a hint or explanation and a retry,
+ * then a worked explanation or a pointer to the teacher; never shame).
+ *
+ * An assessment takes one answer per question, so this is the point "after the
+ * limit". Younger learners see every clue laid out as a walk-through, which
+ * costs nothing now the answer is marked. Older learners get one line.
+ */
+function WrongAnswerHelp({ young, hints }: { young: boolean; hints: string[] }) {
+  if (!young) {
+    return (
+      <p className="text-sm text-ink-muted">
+        {hints.length > 0 ? `Clue for next time: ${hints[0]} ` : ''}Your teacher can go over this one with you.
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {hints.length > 0 ? (
+        <>
+          <p className="font-medium text-ink">Here is how to think about it:</p>
+          <ol className="flex list-decimal flex-col gap-1 pl-5 text-ink">
+            {hints.map((hint, index) => (
+              <li key={index} className="leading-body">
+                {hint}
+              </li>
+            ))}
+          </ol>
+        </>
+      ) : null}
+      <p className="text-ink">If it still feels tricky, ask your teacher. Tricky questions are how we learn.</p>
+    </div>
   );
 }
