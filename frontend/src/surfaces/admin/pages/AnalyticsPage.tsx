@@ -10,7 +10,13 @@ import {
   EmptyState,
   IconAnalytics,
   IconDownload,
+  IconAdd,
+  IconArchive,
+  IconEdit,
   IconStart,
+  Field,
+  Input,
+  Select,
   PageHeader,
   Pagination,
   type Column,
@@ -27,6 +33,8 @@ import {
   runReport,
 } from '@/reporting/reporting.api';
 import type { ReportDefinition, ReportRunResult } from '@/reporting/reporting.types';
+import { saveBlob } from '@/api';
+import { ArchiveReportModal, ExportsCard, ReportDefinitionModal } from './ReportEditors';
 
 /** Sleeps, then polls the export row until it leaves QUEUED/RUNNING. */
 async function waitForExport(exportId: string, attempts = 20): Promise<Awaited<ReturnType<typeof fetchReportExportStatus>>> {
@@ -42,10 +50,19 @@ async function waitForExport(exportId: string, attempts = 20): Promise<Awaited<R
 export function AnalyticsPage() {
   useDocumentTitle('Analytics');
   const canExport = useCan('report.export');
+  const canWrite = useCan('report.definition.write');
 
   const [activeReport, setActiveReport] = useState<ReportDefinition | null>(null);
   const [result, setResult] = useState<ReportRunResult | null>(null);
   const [page, setPage] = useState(1);
+  const [editor, setEditor] = useState<ReportDefinition | 'new' | null>(null);
+  const [archive, setArchive] = useState<ReportDefinition | null>(null);
+  const [format, setFormat] = useState<'CSV' | 'XLSX' | 'PDF'>('CSV');
+
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const range = { ...(from ? { from } : {}), ...(to ? { to } : {}) };
+  const windowInvalid = Boolean(from && to && from > to);
 
   const query = useQuery({
     queryKey: qk.reports.list({ page }),
@@ -53,24 +70,19 @@ export function AnalyticsPage() {
   });
 
   const run = useMutation({
-    mutationFn: (definition: ReportDefinition) => runReport(definition.id),
+    mutationFn: (definition: ReportDefinition) => runReport(definition.id, range),
     onSuccess: setResult,
   });
 
   const exportAndDownload = useMutation({
     mutationFn: async (definition: ReportDefinition) => {
-      const queued = await requestReportExport({ definitionId: definition.id, format: 'CSV' });
+      const queued = await requestReportExport({ definitionId: definition.id, format, ...range });
       const finished = await waitForExport(queued.id);
       if (finished.status !== 'READY') {
         throw new Error(finished.failureReason ?? 'The export did not finish in time — try again shortly.');
       }
       const { blob, fileName } = await downloadReportExport(finished.id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      link.click();
-      URL.revokeObjectURL(url);
+      saveBlob(blob, fileName);
     },
   });
 
@@ -98,6 +110,7 @@ export function AnalyticsPage() {
             variant="outline"
             leadingIcon={<IconStart aria-hidden className="h-4 w-4" />}
             isLoading={run.isPending && run.variables?.id === row.id}
+            disabled={windowInvalid}
             onClick={() => {
               setActiveReport(row);
               run.mutate(row);
@@ -111,10 +124,31 @@ export function AnalyticsPage() {
               variant="ghost"
               leadingIcon={<IconDownload aria-hidden className="h-4 w-4" />}
               isLoading={exportAndDownload.isPending && exportAndDownload.variables?.id === row.id}
+              disabled={windowInvalid}
               onClick={() => exportAndDownload.mutate(row)}
             >
               Export
             </Button>
+          ) : null}
+          {canWrite && !row.isSystem ? (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                leadingIcon={<IconEdit aria-hidden className="h-4 w-4" />}
+                onClick={() => setEditor(row)}
+              >
+                Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                leadingIcon={<IconArchive aria-hidden className="h-4 w-4" />}
+                onClick={() => setArchive(row)}
+              >
+                Archive
+              </Button>
+            </>
           ) : null}
         </div>
       ),
@@ -128,14 +162,43 @@ export function AnalyticsPage() {
         description="Engagement, mastery and progress across the school, with exports."
       />
 
+      <Card>
+        <CardHeader title="Options" description="Apply to Run and Export. An empty window means the last 30 days." />
+        <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Field label="From">
+            <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+          </Field>
+          <Field label="To" error={windowInvalid ? 'The window ends before it starts.' : undefined}>
+            <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+          </Field>
+          <Field label="Export format">
+            <Select
+              value={format}
+              onChange={(event) => setFormat(event.target.value as typeof format)}
+              options={[
+                { value: 'CSV', label: 'CSV (spreadsheet text)' },
+                { value: 'XLSX', label: 'Excel workbook' },
+                { value: 'PDF', label: 'PDF document' },
+              ]}
+            />
+          </Field>
+        </CardBody>
+      </Card>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader
             title="Report catalogue"
             actions={
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-soft text-primary-strong">
-                <IconAnalytics aria-hidden className="h-4 w-4" />
-              </span>
+              canWrite ? (
+                <Button size="sm" leadingIcon={<IconAdd aria-hidden className="h-4 w-4" />} onClick={() => setEditor('new')}>
+                  New report
+                </Button>
+              ) : (
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-soft text-primary-strong">
+                  <IconAnalytics aria-hidden className="h-4 w-4" />
+                </span>
+              )
             }
           />
           <CardBody className="p-0">
@@ -201,6 +264,9 @@ export function AnalyticsPage() {
           </CardBody>
         </Card>
       </div>
+      <ExportsCard definitions={reports} canDownload={canExport} />
+      {editor ? <ReportDefinitionModal existing={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} /> : null}
+      {archive ? <ArchiveReportModal definition={archive} onClose={() => setArchive(null)} /> : null}
     </div>
   );
 }
