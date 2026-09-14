@@ -74,15 +74,24 @@ export interface SupportRequestDetail extends SupportRequestRow {
   messages: SupportMessageRow[];
 }
 
-/** One category's handling rules — owner, priority floor and response targets. */
+/** One category's handling rules. Mirrors `CategoryPolicy` in `support.policy.ts`. */
 export interface SupportPolicyEntry {
   category: SupportCategory;
-  label?: string;
-  owner?: string;
-  minimumPriority?: SupportPriority;
-  firstResponseHours?: number;
-  resolutionHours?: number;
-  escalationRoute?: string;
+  label: string;
+  /** The role that owns the category, shown to the requester as "handled by". */
+  ownerRole: string;
+  defaultPriority: SupportPriority;
+  minimumPriority: SupportPriority;
+  escalationRoute: string;
+  closureCriteria: string;
+  requiresWrittenOutcome: boolean;
+}
+
+/** `GET /support/policies`. */
+export interface SupportPolicies {
+  categories: SupportPolicyEntry[];
+  firstResponseHours: Record<SupportPriority, number>;
+  resolutionHours: Record<SupportPriority, number>;
 }
 
 export interface SupportSummary {

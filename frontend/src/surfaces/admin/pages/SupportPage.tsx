@@ -31,6 +31,7 @@ import {
   closeSupportRequest,
   createSupportRequest,
   escalateSupportRequest,
+  fetchSupportPolicies,
   fetchSupportRequest,
   fetchSupportRequests,
   fetchSupportSummary,
@@ -581,6 +582,8 @@ function RaiseRequestModal({ onClose }: { onClose: () => void }) {
   const [category, setCategory] = useState<string>('ACCESS_ACCOUNT');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
+  const policies = useQuery({ queryKey: qk.support.policies, queryFn: fetchSupportPolicies });
+  const policy = policies.data?.categories.find((entry) => entry.category === category);
 
   const create = useMutation({
     mutationFn: () =>
@@ -624,6 +627,14 @@ function RaiseRequestModal({ onClose }: { onClose: () => void }) {
             onChange={(event) => setCategory(event.target.value)}
           />
         </Field>
+        {policy && policies.data ? (
+          <p className="rounded-md bg-surface-sunken p-3 text-sm text-ink">
+            Handled by {policy.ownerRole.toLowerCase().replace(/_/g, ' ')}. Usually a first reply within{' '}
+            {policies.data.firstResponseHours[policy.defaultPriority]} hours and a resolution within{' '}
+            {policies.data.resolutionHours[policy.defaultPriority]} hours.
+            {policy.requiresWrittenOutcome ? ' You will get a written account of what was done.' : ''}
+          </p>
+        ) : null}
 
         <Field label="Subject" hint="One line, so it can be found again.">
           <Input value={subject} onChange={(event) => setSubject(event.target.value)} />

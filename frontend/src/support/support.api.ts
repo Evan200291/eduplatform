@@ -3,7 +3,7 @@ import type { Paginated } from '@/api/types';
 import type {
   SupportListQuery,
   SupportMessageRow,
-  SupportPolicyEntry,
+  SupportPolicies,
   SupportRequestDetail,
   SupportRequestRow,
   SupportSummary,
@@ -23,8 +23,8 @@ import type {
  * school complains about next.
  */
 
-export function fetchSupportPolicies(): Promise<SupportPolicyEntry[]> {
-  return apiGet<SupportPolicyEntry[]>('/support/policies');
+export function fetchSupportPolicies(): Promise<SupportPolicies> {
+  return apiGet<SupportPolicies>('/support/policies');
 }
 
 export function fetchSupportSummary(): Promise<SupportSummary> {
