@@ -26,6 +26,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title';
 import { formatDateTime } from '@/lib/format';
 import { toApiError } from '@/api';
 import { fetchContentReports, resolveContentReport } from '@/content/content.api';
+import { moderationTarget, type ModerationTargetState } from '@/content/moderation-targets';
 import { ModerationLogCard } from './ModerationReviews';
 import type {
   ContentReportReason,
@@ -114,8 +115,16 @@ export function ModerationPage() {
     queryFn: () => fetchContentReports(filters),
   });
 
-  const reports = query.data?.items ?? [];
+  // Within the page, the reports that most need a person go first: urgent
+  // safeguarding, then anything past its one-business-day target.
+  const reports = [...(query.data?.items ?? [])].sort(
+    (a, b) => TARGET_RANK[moderationTarget(a).state] - TARGET_RANK[moderationTarget(b).state],
+  );
   const pendingCount = reports.filter((row) => row.decision === 'PENDING').length;
+  const urgentCount = reports.filter((row) => {
+    const state = moderationTarget(row).state;
+    return state === 'urgent' || state === 'overdue';
+  }).length;
 
   const columns: Column<ContentReportRow>[] = [
     {
@@ -132,6 +141,11 @@ export function ModerationPage() {
       key: 'reason',
       header: 'Reason',
       render: (row) => REASON_LABEL[row.reason],
+    },
+    {
+      key: 'target-time',
+      header: 'Response target',
+      render: (row) => <TargetBadge report={row} />,
     },
     {
       key: 'reporter',
@@ -175,6 +189,15 @@ export function ModerationPage() {
                 {pendingCount === 1 ? 'report awaiting review on this page' : 'reports awaiting review on this page'}
               </p>
             </div>
+            {urgentCount > 0 ? (
+              <p className="ml-auto text-sm font-medium text-danger-strong">
+                {urgentCount} need{urgentCount === 1 ? 's' : ''} attention now
+              </p>
+            ) : null}
+          </CardBody>
+          <CardBody className="border-t border-line pt-3 text-xs text-ink-muted">
+            Targets: safeguarding concerns (inappropriate or not age appropriate) are reviewed straight away; everything
+            else within one working day. Weekends are skipped; school holidays are not yet known to the system.
           </CardBody>
         </Card>
       ) : null}
@@ -238,6 +261,34 @@ export function ModerationPage() {
       />
     </div>
   );
+}
+
+const TARGET_RANK: Record<ModerationTargetState, number> = {
+  urgent: 0,
+  overdue: 1,
+  'due-soon': 2,
+  'on-track': 3,
+  missed: 4,
+  met: 5,
+};
+
+/** The PRD v2.5 response target for one report, in words as well as colour. */
+function TargetBadge({ report }: { report: ContentReportRow }) {
+  const target = moderationTarget(report);
+  switch (target.state) {
+    case 'urgent':
+      return <Badge tone="danger">Urgent: review now</Badge>;
+    case 'overdue':
+      return <Badge tone="danger">Overdue since {formatDateTime(target.dueAt)}</Badge>;
+    case 'due-soon':
+      return <Badge tone="warning">Due {formatDateTime(target.dueAt)}</Badge>;
+    case 'on-track':
+      return <span className="text-sm text-ink-muted">Due {formatDateTime(target.dueAt)}</span>;
+    case 'missed':
+      return <span className="text-sm text-ink-muted">Answered after the target</span>;
+    case 'met':
+      return <span className="text-sm text-ink-muted">Answered within the target</span>;
+  }
 }
 
 /** What the report points at — a lesson, an activity, or a free target reference. */
