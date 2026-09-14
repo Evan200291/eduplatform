@@ -24,10 +24,9 @@ import { paths } from './paths';
  * security: the API re-checks every request, and these guards exist so people
  * are not shown doors that will not open.
  *
- * Screens are imported eagerly. The app is small enough that a second network
- * round-trip mid-navigation would cost a learner more than the extra kilobytes;
- * when the bundle warrants splitting, add `lazy:` to the surface route objects —
- * the shells already render a `Suspense` fallback.
+ * Each surface loads its screens as one lazy chunk (see the surface route
+ * files), so a learner downloads the learner screens only and never the admin
+ * panel. The shells render a `Suspense` fallback while a chunk arrives.
  */
 export const ROUTES: RouteObject[] = [
   { path: paths.root, element: <RootRedirect /> },

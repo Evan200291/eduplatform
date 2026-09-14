@@ -1,18 +1,24 @@
+import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
 import { RequirePermission } from '@/routes/RequirePermission';
 import { StudentSurface } from './StudentSurface';
-import {
-  ActivitiesPage,
-  ActivityPlayerPage,
-  CompanionPage,
-  LeaderboardPage,
-  MissionsPage,
-  ScreeningPage,
-  StudentHomePage,
-  StudentNotificationsPage,
-  StudentProfilePage,
-  StudentProgressPage,
-} from './pages';
+
+/*
+ * Each surface's screens load as one chunk the first time someone enters
+ * that surface, so a learner never downloads the admin panel. The shells
+ * already render a Suspense fallback around their outlet.
+ */
+const loadPages = () => import('./pages');
+const ActivitiesPage = lazy(() => loadPages().then((m) => ({ default: m.ActivitiesPage })));
+const ActivityPlayerPage = lazy(() => loadPages().then((m) => ({ default: m.ActivityPlayerPage })));
+const CompanionPage = lazy(() => loadPages().then((m) => ({ default: m.CompanionPage })));
+const LeaderboardPage = lazy(() => loadPages().then((m) => ({ default: m.LeaderboardPage })));
+const MissionsPage = lazy(() => loadPages().then((m) => ({ default: m.MissionsPage })));
+const ScreeningPage = lazy(() => loadPages().then((m) => ({ default: m.ScreeningPage })));
+const StudentHomePage = lazy(() => loadPages().then((m) => ({ default: m.StudentHomePage })));
+const StudentNotificationsPage = lazy(() => loadPages().then((m) => ({ default: m.StudentNotificationsPage })));
+const StudentProfilePage = lazy(() => loadPages().then((m) => ({ default: m.StudentProfilePage })));
+const StudentProgressPage = lazy(() => loadPages().then((m) => ({ default: m.StudentProgressPage })));
 
 /**
  * Routes under `/learn` (blueprint §03).

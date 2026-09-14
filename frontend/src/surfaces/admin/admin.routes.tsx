@@ -1,35 +1,41 @@
+import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
 import type { Permission } from '@/auth';
 import { RequirePermission } from '@/routes/RequirePermission';
 import { RequireSchoolContext } from '@/routes/RequireSchoolContext';
 import { AdminSurface } from './AdminSurface';
-import {
-  AcademicPage,
-  AdminOverviewPage,
-  AgreementsPage,
-  AnalyticsPage,
-  AssessmentPage,
-  AuditPage,
-  BillingPage,
-  BrandingPage,
-  CurriculumPage,
-  FeaturesPage,
-  GamificationPage,
-  ModerationPage,
-  ContentRightsPage,
-  MediaLibraryPage,
-  PrivacyPage,
-  OrganizationDetailPage,
-  OrganizationsPage,
-  PlatformOpsPage,
-  RolesPage,
-  SchoolDetailPage,
-  SchoolsPage,
-  SettingsPage,
-  SupportPage,
-  UserDetailPage,
-  UsersPage,
-} from './pages';
+
+/*
+ * Each surface's screens load as one chunk the first time someone enters
+ * that surface, so a learner never downloads the admin panel. The shells
+ * already render a Suspense fallback around their outlet.
+ */
+const loadPages = () => import('./pages');
+const AcademicPage = lazy(() => loadPages().then((m) => ({ default: m.AcademicPage })));
+const AdminOverviewPage = lazy(() => loadPages().then((m) => ({ default: m.AdminOverviewPage })));
+const AgreementsPage = lazy(() => loadPages().then((m) => ({ default: m.AgreementsPage })));
+const AnalyticsPage = lazy(() => loadPages().then((m) => ({ default: m.AnalyticsPage })));
+const AssessmentPage = lazy(() => loadPages().then((m) => ({ default: m.AssessmentPage })));
+const AuditPage = lazy(() => loadPages().then((m) => ({ default: m.AuditPage })));
+const BillingPage = lazy(() => loadPages().then((m) => ({ default: m.BillingPage })));
+const BrandingPage = lazy(() => loadPages().then((m) => ({ default: m.BrandingPage })));
+const CurriculumPage = lazy(() => loadPages().then((m) => ({ default: m.CurriculumPage })));
+const FeaturesPage = lazy(() => loadPages().then((m) => ({ default: m.FeaturesPage })));
+const GamificationPage = lazy(() => loadPages().then((m) => ({ default: m.GamificationPage })));
+const ModerationPage = lazy(() => loadPages().then((m) => ({ default: m.ModerationPage })));
+const ContentRightsPage = lazy(() => loadPages().then((m) => ({ default: m.ContentRightsPage })));
+const MediaLibraryPage = lazy(() => loadPages().then((m) => ({ default: m.MediaLibraryPage })));
+const PrivacyPage = lazy(() => loadPages().then((m) => ({ default: m.PrivacyPage })));
+const OrganizationDetailPage = lazy(() => loadPages().then((m) => ({ default: m.OrganizationDetailPage })));
+const OrganizationsPage = lazy(() => loadPages().then((m) => ({ default: m.OrganizationsPage })));
+const PlatformOpsPage = lazy(() => loadPages().then((m) => ({ default: m.PlatformOpsPage })));
+const RolesPage = lazy(() => loadPages().then((m) => ({ default: m.RolesPage })));
+const SchoolDetailPage = lazy(() => loadPages().then((m) => ({ default: m.SchoolDetailPage })));
+const SchoolsPage = lazy(() => loadPages().then((m) => ({ default: m.SchoolsPage })));
+const SettingsPage = lazy(() => loadPages().then((m) => ({ default: m.SettingsPage })));
+const SupportPage = lazy(() => loadPages().then((m) => ({ default: m.SupportPage })));
+const UserDetailPage = lazy(() => loadPages().then((m) => ({ default: m.UserDetailPage })));
+const UsersPage = lazy(() => loadPages().then((m) => ({ default: m.UsersPage })));
 
 /**
  * Who may open the admin panel at all.

@@ -1,21 +1,27 @@
+import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
 import type { Permission } from '@/auth';
 import { RequirePermission } from '@/routes/RequirePermission';
 import { TeacherSurface } from './TeacherSurface';
-import {
-  AssignmentDetailPage,
-  AssignmentsPage,
-  ClassDetailPage,
-  ClassesPage,
-  LearningPathDetailPage,
-  LearningPathsPage,
-  RecommendationsPage,
-  StudentDetailPage,
-  StudentsPage,
-  TeacherDashboardPage,
-  TeacherNotificationsPage,
-  TeacherReportsPage,
-} from './pages';
+
+/*
+ * Each surface's screens load as one chunk the first time someone enters
+ * that surface, so a learner never downloads the admin panel. The shells
+ * already render a Suspense fallback around their outlet.
+ */
+const loadPages = () => import('./pages');
+const AssignmentDetailPage = lazy(() => loadPages().then((m) => ({ default: m.AssignmentDetailPage })));
+const AssignmentsPage = lazy(() => loadPages().then((m) => ({ default: m.AssignmentsPage })));
+const ClassDetailPage = lazy(() => loadPages().then((m) => ({ default: m.ClassDetailPage })));
+const ClassesPage = lazy(() => loadPages().then((m) => ({ default: m.ClassesPage })));
+const LearningPathDetailPage = lazy(() => loadPages().then((m) => ({ default: m.LearningPathDetailPage })));
+const LearningPathsPage = lazy(() => loadPages().then((m) => ({ default: m.LearningPathsPage })));
+const RecommendationsPage = lazy(() => loadPages().then((m) => ({ default: m.RecommendationsPage })));
+const StudentDetailPage = lazy(() => loadPages().then((m) => ({ default: m.StudentDetailPage })));
+const StudentsPage = lazy(() => loadPages().then((m) => ({ default: m.StudentsPage })));
+const TeacherDashboardPage = lazy(() => loadPages().then((m) => ({ default: m.TeacherDashboardPage })));
+const TeacherNotificationsPage = lazy(() => loadPages().then((m) => ({ default: m.TeacherNotificationsPage })));
+const TeacherReportsPage = lazy(() => loadPages().then((m) => ({ default: m.TeacherReportsPage })));
 
 /**
  * Who may open the teacher portal at all.
