@@ -24,6 +24,7 @@ import { cn } from '@/lib/cn';
 import { fetchEnrolledClasses } from '@/academic/academic.api';
 import { fetchLesson } from '@/content/content.api';
 import { completePathItem, fetchActivePath } from '@/learning/learning.api';
+import { useStartPathItem } from '@/learning/use-start-path-item';
 import type { PathItem } from '@/learning/learning.types';
 import { qk } from '@/query/keys';
 import { useDocumentTitle } from '@/hooks/use-document-title';
@@ -317,6 +318,7 @@ function LessonModal({
   onDone: () => void;
 }) {
   const lessonId = item.lesson?.id;
+  useStartPathItem(pathId, item.id);
   const query = useQuery({
     queryKey: qk.lessons.detail(lessonId ?? 'none'),
     queryFn: () => fetchLesson(lessonId as string),

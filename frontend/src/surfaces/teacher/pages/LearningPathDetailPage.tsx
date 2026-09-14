@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Badge,
@@ -40,6 +40,7 @@ import { paths } from '@/routes/paths';
 import { formatDate } from '@/lib/format';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { humanize, toneFor } from '../lib/humanize';
+import { ArchivePathModal } from './PathPlanning';
 
 const STATUS_TONE = {
   LOCKED: 'neutral',
@@ -64,6 +65,8 @@ function LearningPathDetail({ pathId }: { pathId: string }) {
   const queryClient = useQueryClient();
   const canApprove = useCan('learningpath.approve');
   const canWrite = useCan('learningpath.write');
+  const navigate = useNavigate();
+  const [isArchiving, setArchiving] = useState(false);
   const [isEditingPath, setEditingPath] = useState(false);
   const [editingItem, setEditingItem] = useState<PathItem | null>(null);
   const [removingItem, setRemovingItem] = useState<PathItem | null>(null);
@@ -128,6 +131,11 @@ function LearningPathDetail({ pathId }: { pathId: string }) {
                 Edit pacing
               </Button>
             ) : null}
+            {canWrite && data ? (
+              <Button variant="ghost" size="sm" onClick={() => setArchiving(true)}>
+                Archive
+              </Button>
+            ) : null}
             {needsApproval && canApprove ? (
               <Button onClick={() => approve.mutate()} isLoading={approve.isPending}>
                 Approve path
@@ -136,6 +144,10 @@ function LearningPathDetail({ pathId }: { pathId: string }) {
           </div>
         }
       />
+
+      {isArchiving && data ? (
+        <ArchivePathModal path={data} onClose={() => setArchiving(false)} onDone={() => navigate(paths.teach.paths)} />
+      ) : null}
 
       <QueryBoundary
         isLoading={pathQuery.isPending}

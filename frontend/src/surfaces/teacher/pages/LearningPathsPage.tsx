@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   Badge,
+  Button,
+  IconAdd,
   Card,
   DataTable,
   Pagination,
@@ -22,6 +24,8 @@ import { qk } from '@/query/keys';
 import { paths } from '@/routes/paths';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { humanize } from '../lib/humanize';
+import { useCan } from '@/auth';
+import { PlanPathsModal } from './PathPlanning';
 
 /** The learning paths behind the students you can see, filterable by subject. */
 export function LearningPathsPage() {
@@ -29,6 +33,9 @@ export function LearningPathsPage() {
   const navigate = useNavigate();
   const [subjectId, setSubjectId] = useState('');
   const [page, setPage] = useState(1);
+  const canWrite = useCan('learningpath.write');
+  const [isPlanning, setPlanning] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const subjectsQuery = useQuery({ queryKey: qk.subjects.all, queryFn: fetchSubjects });
   const pathsQuery = useQuery({
@@ -80,7 +87,27 @@ export function LearningPathsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Learning paths" description="What your classes work through." />
+      <PageHeader
+        title="Learning paths"
+        description="What your classes work through."
+        actions={
+          canWrite ? (
+            <Button leadingIcon={<IconAdd aria-hidden className="h-4 w-4" />} onClick={() => setPlanning(true)}>
+              Plan paths
+            </Button>
+          ) : undefined
+        }
+      />
+      {notice ? <p className="rounded-lg bg-success-soft p-3 text-sm text-ink">{notice}</p> : null}
+      {isPlanning ? (
+        <PlanPathsModal
+          onClose={() => setPlanning(false)}
+          onDone={(message) => {
+            setPlanning(false);
+            setNotice(message);
+          }}
+        />
+      ) : null}
 
       <Card>
         <div className="border-b border-line p-4">

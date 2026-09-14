@@ -9,6 +9,7 @@ import type { SubmitAttemptResult } from '@/assessment/assessment.types';
 import { fetchActivityDelivery } from '@/content/content.api';
 import type { ActivityDelivery } from '@/content/content.types';
 import { completePathItem } from '@/learning/learning.api';
+import { useStartPathItem } from '@/learning/use-start-path-item';
 import { submitAssignment } from '@/assignments/assignments.api';
 import { qk } from '@/query/keys';
 import { useDocumentTitle } from '@/hooks/use-document-title';
@@ -54,6 +55,7 @@ export function ActivityPlayerPage() {
   const itemId = searchParams.get('itemId');
   const assignmentId = searchParams.get('assignmentId');
   const navigate = useNavigate();
+  useStartPathItem(pathId, itemId);
   // Set work returns to the list it was started from.
   const onExit = () => navigate(assignmentId ? paths.learn.progress : paths.learn.activities);
 
