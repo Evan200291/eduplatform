@@ -30,7 +30,7 @@ export function useCanAll(permissions: readonly Permission[]): boolean {
 export const authActions = {
   bootstrap: () => useAuthStore.getState().bootstrap(),
   signIn: useAuthStore.getState().signIn,
-  signOut: () => useAuthStore.getState().signOut(),
+  signOut: (reason?: 'signed-out' | 'idle') => useAuthStore.getState().signOut(reason),
   reloadProfile: () => useAuthStore.getState().reloadProfile(),
   setTenantSchool: (schoolId: string | null) =>
     useAuthStore.getState().setTenantSchool(schoolId),

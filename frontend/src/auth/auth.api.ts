@@ -30,11 +30,11 @@ export async function acceptInvitation(input: AcceptInvitationInput): Promise<Au
 }
 
 /** Tolerates an already-expired token so a user is never trapped in a signed-in UI. */
-export async function logout(): Promise<void> {
+export async function logout(reason: 'signed-out' | 'idle' = 'signed-out'): Promise<void> {
   try {
     await apiPost<void>('/auth/logout');
   } finally {
-    session.end('signed-out');
+    session.end(reason);
   }
 }
 

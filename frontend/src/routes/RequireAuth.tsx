@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { LoadingScreen } from '@/components/feedback';
 import { useAuthStatus, useProfile } from '@/auth';
+import { IdleSignOut } from './IdleSignOut';
 import { paths } from './paths';
 
 /**
@@ -30,5 +31,10 @@ export function RequireAuth() {
     return <Navigate to={paths.changePassword} replace />;
   }
 
-  return <Outlet />;
+  return (
+    <>
+      <IdleSignOut />
+      <Outlet />
+    </>
+  );
 }

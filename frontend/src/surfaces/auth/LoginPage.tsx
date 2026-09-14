@@ -44,6 +44,10 @@ export function LoginPage() {
         <Alert tone="info" title="You were signed out." className="mb-4">
           That happens after a while away. Sign in to pick up where you left off.
         </Alert>
+      ) : endedReason === 'idle' ? (
+        <Alert tone="info" title="You were signed out to keep your account safe." className="mb-4">
+          Nobody had used this screen for a while. Sign in again to carry on.
+        </Alert>
       ) : null}
 
       <div role="tablist" aria-label="Sign-in type" className="mb-5 flex gap-1 rounded-md bg-surface-sunken p-1">

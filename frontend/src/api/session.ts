@@ -12,7 +12,8 @@
  * mounted, and the auth store needs it after.
  */
 
-export type SessionEnded = 'expired' | 'signed-out';
+/** `idle` is the app signing someone out after the school's inactivity limit. */
+export type SessionEnded = 'expired' | 'signed-out' | 'idle';
 
 let accessToken: string | null = null;
 let expiresAt: number | null = null;

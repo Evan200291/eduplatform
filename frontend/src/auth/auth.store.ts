@@ -17,11 +17,11 @@ interface AuthState {
   tenant: TenantContext | null;
   permissions: PermissionSet;
   /** Set when a session ended by itself, so the login screen can explain why. */
-  endedReason: 'expired' | null;
+  endedReason: 'expired' | 'idle' | null;
 
   bootstrap: () => Promise<void>;
   signIn: (credentials: LoginCredentials) => Promise<ActorProfile>;
-  signOut: () => Promise<void>;
+  signOut: (reason?: 'signed-out' | 'idle') => Promise<void>;
   reloadProfile: () => Promise<void>;
   /** Platform staff only: act inside another school via the `X-Tenant-School` header. */
   setTenantSchool: (schoolId: string | null) => Promise<void>;
@@ -83,8 +83,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return result.user;
   },
 
-  async signOut() {
-    await authApi.logout();
+  async signOut(reason = 'signed-out') {
+    await authApi.logout(reason);
   },
 
   async reloadProfile() {
@@ -115,6 +115,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 session.onEnded((reason) => {
   useAuthStore.setState({
     ...anonymous,
-    endedReason: reason === 'expired' ? 'expired' : null,
+    endedReason: reason === 'signed-out' ? null : reason,
   });
 });
