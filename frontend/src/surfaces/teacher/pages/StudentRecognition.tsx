@@ -4,7 +4,12 @@ import { Badge, Button, Card, CardBody, CardHeader, EmptyState, Field, Input, Mo
 import { ErrorState, QueryBoundary } from '@/components/feedback';
 import { useCan } from '@/auth';
 import { awardBadge, awardPoints, fetchBadges } from '@/gamification/gamification.api';
-import { cancelMissionForStudents, fetchMissionProgress } from '@/missions/missions.api';
+import {
+  cancelMissionForStudents,
+  fetchMissionProgress,
+  fetchMissionSummary,
+  refreshMissionProgress,
+} from '@/missions/missions.api';
 import type { MissionProgressRow } from '@/missions/missions.types';
 import { qk } from '@/query/keys';
 import { humanize } from '../lib/humanize';
@@ -196,12 +201,42 @@ export function StudentMissionsCard({ studentId, className }: { studentId: strin
     queryKey: qk.missions.progress({ studentId }),
     queryFn: () => fetchMissionProgress({ studentId, pageSize: 50 }),
   });
+  const summary = useQuery({
+    queryKey: qk.missions.summary(studentId),
+    queryFn: () => fetchMissionSummary(studentId),
+  });
+  /** Missions are re-measured on a schedule; this does it now, e.g. right after a lesson. */
+  const recheck = useMutation({
+    mutationFn: () => refreshMissionProgress({ studentId, note: 'Re-checked by a teacher' }),
+    onSuccess: () => {
+      void query.refetch();
+      void summary.refetch();
+    },
+  });
   const rows = query.data?.items ?? [];
 
   return (
     <Card className={className}>
-      <CardHeader title="Missions" description="Short goals this learner is working towards." />
+      <CardHeader
+        title="Missions"
+        description={
+          summary.data
+            ? `${summary.data.active} under way · ${summary.data.notStarted} not started · ${summary.data.completed} completed`
+            : 'Short goals this learner is working towards.'
+        }
+        actions={
+          <Button
+            size="sm"
+            variant="ghost"
+            isLoading={recheck.isPending}
+            onClick={() => recheck.mutate()}
+          >
+            Re-check progress
+          </Button>
+        }
+      />
       <CardBody className="p-0">
+        {recheck.error ? <ErrorState error={recheck.error} /> : null}
         <QueryBoundary
           isLoading={query.isPending}
           error={query.error}

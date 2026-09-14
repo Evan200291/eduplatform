@@ -30,7 +30,7 @@ import {
   fetchBadges,
   fetchRewards,
 } from '@/gamification/gamification.api';
-import { createMission, fetchMissions } from '@/missions/missions.api';
+import { archiveMission, createMission, fetchMissions } from '@/missions/missions.api';
 import { fetchGrowthConfig, updateGrowthConfig } from '@/companion/companion.api';
 import type { GrowthConfig } from '@/companion/companion.types';
 import { fetchStreakConfig, updateStreakConfig } from '@/gamification/gamification.api';
@@ -420,7 +420,15 @@ function MissionsSection({ canWrite }: { canWrite: boolean }) {
   const [isOpen, setOpen] = useState(false);
   const [editing, setEditing] = useState<MissionDefinition | null>(null);
   const [managing, setManaging] = useState<MissionDefinition | null>(null);
+  const [archiving, setArchiving] = useState<MissionDefinition | null>(null);
   const [page, setPage] = useState(1);
+  const archive = useMutation({
+    mutationFn: (missionId: string) => archiveMission(missionId),
+    onSuccess: () => {
+      setArchiving(null);
+      void queryClient.invalidateQueries({ queryKey: qk.missions.list() });
+    },
+  });
   const query = useQuery({
     queryKey: qk.missions.list({ page, pageSize: 10 }),
     queryFn: () => fetchMissions({ page, pageSize: 10 }),
@@ -471,15 +479,18 @@ function MissionsSection({ canWrite }: { canWrite: boolean }) {
                 <span className="text-ink">{mission.title}</span>
                 <div className="flex flex-wrap items-center gap-1">
                   <Badge tone={mission.isActive ? 'success' : 'neutral'}>
-                    {mission.isActive ? 'Active' : 'Inactive'}
+                    {mission.archivedAt ? 'Archived' : mission.isActive ? 'Active' : 'Inactive'}
                   </Badge>
-                  {canWrite ? (
+                  {canWrite && !mission.archivedAt ? (
                     <>
                       <Button size="sm" variant="ghost" onClick={() => setManaging(mission)}>
                         Learners
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setEditing(mission)}>
                         Edit
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setArchiving(mission)}>
+                        Archive
                       </Button>
                     </>
                   ) : null}
@@ -502,6 +513,28 @@ function MissionsSection({ canWrite }: { canWrite: boolean }) {
       ) : null}
       {managing ? (
         <MissionLearnersModal mission={managing} source="all" onClose={() => setManaging(null)} />
+      ) : null}
+      {archiving ? (
+        <Modal
+          isOpen
+          onClose={() => setArchiving(null)}
+          title={`Archive “${archiving.title}”?`}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setArchiving(null)} disabled={archive.isPending}>
+                Keep it
+              </Button>
+              <Button variant="danger" isLoading={archive.isPending} onClick={() => archive.mutate(archiving.id)}>
+                Archive
+              </Button>
+            </>
+          }
+        >
+          {archive.error ? <ErrorState error={archive.error} /> : null}
+          <p className="text-ink">
+            It stops being active and nobody new can join. Progress and anything already earned stay on the record.
+          </p>
+        </Modal>
       ) : null}
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add a mission">

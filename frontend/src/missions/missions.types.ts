@@ -9,6 +9,7 @@ export type MissionStatus = 'NOT_STARTED' | 'ACTIVE' | 'COMPLETED' | 'EXPIRED' |
 
 export interface MissionDefinition {
   id: string;
+  archivedAt?: string | null;
   key: string;
   title: string;
   description: string | null;
