@@ -5,6 +5,40 @@ here instead of re-deriving what the last one learned.
 
 ---
 
+## 2026-09-14 (second round) — Frontend: PRD v2.5 decisions the website alone could finish
+
+All checks pass in `frontend/`: typecheck, lint (the one old warning), 54 tests
+(18 new), build. Signed-in screens were not clicked through in the browser —
+the assistant cannot type passwords — so the manual steps are N1–N8 in
+`TESTING-GUIDE.txt`. `PM-QUESTIONS.txt` at the repo root (not committed) holds
+the questions for the PM, each with an example answer.
+
+| PRD rule | What landed |
+|---|---|
+| Visible time limit only when deliberately set | `AssessmentPlayer` reads the attempt's `expiresAt`, shows a clock, closes the attempt as expired when it runs out |
+| Age-differentiated hints and feedback | `QuestionCard` uses the learner's age mode; a wrong answer now waits for "Next question" |
+| Simple time estimates | `formatAboutMinutes`; activity player and lesson reader. Path rows and set work are typed to show it once the server sends it |
+| Never auto-approve | Settings no longer offers the switch and always saves "teacher decides"; Features will not turn `learning.path.autoApprove` on |
+| Sign-out after inactivity | `routes/IdleSignOut.tsx` + `auth/idle.ts`, reads `sessionIdleMinutes`, one-minute warning, cross-tab via `localStorage` |
+| CSV for teachers and classes | `ImportTools.tsx`: staff → invitations, classes → create + lead teacher, every row checked first (`users/import-rows.ts`, `lib/csv.ts`) |
+| Urgent now, others in one business day | `content/moderation-targets.ts`; the queue shows and sorts by target |
+
+Bug fixed: "Add a class" never sent `gradeId`, which the server requires, so it
+always failed.
+
+### Not done, and why
+
+All need backend changes, and this session does not write to `backend/`:
+removing the auto-approve job, password reset by email (also needs an email
+service — there is none), audit alerts, per-learner due dates, hiding future
+locked steps, one-sitting mode, cover access, the six moderation outcomes and
+escalation job, students reading `sessionIdleMinutes` (they lack
+`school.settings.read`), `estimatedMinutes` in the path-item and assignment
+attempt selects, homework CSV. Mini-games, points cap, grades, trust reports and
+preview still wait on the PM (PM-QUESTIONS.txt Part B).
+
+---
+
 ## 2026-09-14 — Frontend: every remaining backend feature has a screen
 
 Branch: `feat/content-authoring-and-moderation`, now on `origin`. All of the
