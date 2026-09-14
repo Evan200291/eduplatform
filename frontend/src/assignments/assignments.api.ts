@@ -51,7 +51,11 @@ export function updateAssignment(assignmentId: string, input: Record<string, unk
 
 export function setAssignmentTargets(
   assignmentId: string,
-  input: Record<string, unknown>,
+  input: {
+    targets: { targetType: 'STUDENT' | 'GROUP' | 'CLASS' | 'GRADE' | 'SUBJECT'; targetId: string; targetLabel?: string }[];
+    /** False adds to the list; true (the server default) replaces it. */
+    replace?: boolean;
+  },
 ): Promise<Assignment> {
   return apiPost<Assignment>(`/assignments/${encodeURIComponent(assignmentId)}/targets`, input);
 }

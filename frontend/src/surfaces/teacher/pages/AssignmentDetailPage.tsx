@@ -38,6 +38,7 @@ import { paths } from '@/routes/paths';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { humanize, toneFor } from '../lib/humanize';
+import { AddLearnersModal } from './AddLearnersToAssignment';
 
 const STATE_TONE = {
   NOT_STARTED: 'neutral',
@@ -99,6 +100,7 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string }) {
   const canWrite = useCan('assignment.write');
   const [action, setAction] = useState<AttemptAction | null>(null);
   const [isEditing, setEditing] = useState(false);
+  const [isAdding, setAdding] = useState(false);
 
   const invalidateAssignment = () => {
     void queryClient.invalidateQueries({ queryKey: qk.assignments.detail(assignmentId) });
@@ -170,6 +172,11 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string }) {
                   >
                     Edit
                   </Button>
+                  {!assignmentQuery.data.archivedAt ? (
+                    <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
+                      Add learners
+                    </Button>
+                  ) : null}
                   {!assignmentQuery.data.isPublished && !assignmentQuery.data.archivedAt ? (
                     <Button
                       variant="outline"
@@ -282,6 +289,7 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string }) {
         />
       ) : null}
 
+      {isAdding ? <AddLearnersModal assignmentId={assignmentId} onClose={() => setAdding(false)} /> : null}
       {isEditing && assignmentQuery.data ? (
         <EditAssignmentModal
           assignment={assignmentQuery.data}
