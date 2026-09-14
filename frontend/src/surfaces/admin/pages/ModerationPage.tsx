@@ -26,6 +26,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title';
 import { formatDateTime } from '@/lib/format';
 import { toApiError } from '@/api';
 import { fetchContentReports, resolveContentReport } from '@/content/content.api';
+import { ModerationLogCard } from './ModerationReviews';
 import type {
   ContentReportReason,
   ContentReportRow,
@@ -224,6 +225,8 @@ export function ModerationPage() {
           </QueryBoundary>
         </CardBody>
       </Card>
+
+      <ModerationLogCard canReview={canReview} />
 
       <ReviewDialog
         report={reviewing}

@@ -291,5 +291,6 @@ export const qk = {
     reports: (params?: unknown) => ['moderation', 'reports', params ?? {}] as const,
     report: (id: string) => ['moderation', 'report', id] as const,
     reviews: (params?: unknown) => ['moderation', 'reviews', params ?? {}] as const,
+    targets: (targetType: string) => ['moderation', 'targets', targetType] as const,
   },
 } as const;
