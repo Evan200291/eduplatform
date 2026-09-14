@@ -18,12 +18,14 @@ import {
   Select,
   type SelectOption,
 } from '@/components/ui';
-import { QueryBoundary } from '@/components/feedback';
+import { ErrorState, QueryBoundary } from '@/components/feedback';
 import {
   dismissNotification,
-  markNotificationActioned,
+  dismissNotifications,
   fetchNotificationPreferences,
+  fetchNotificationSummary,
   fetchNotifications,
+  markNotificationActioned,
   markNotificationRead,
   markNotificationsRead,
   updateNotificationPreferences,
@@ -71,8 +73,18 @@ export function TeacherNotificationsPage() {
     onSuccess: invalidate,
   });
 
+  /** Across the whole inbox, not just this page, so "Mark all read" is never wrongly greyed out. */
+  const summary = useQuery({ queryKey: qk.notifications.summary, queryFn: fetchNotificationSummary });
+
   const rows = listQuery.data?.items ?? [];
-  const unreadCount = rows.filter((row) => row.state === 'DELIVERED' || row.state === 'PENDING').length;
+  const unreadCount = summary.data?.unread ?? rows.filter((row) => row.state === 'DELIVERED' || row.state === 'PENDING').length;
+  const readIds = rows.filter((row) => row.state === 'READ' || row.state === 'ACTIONED').map((row) => row.id);
+
+  /** Clears only messages already read on this page, so nothing unseen disappears. */
+  const clearRead = useMutation({
+    mutationFn: () => dismissNotifications({ ids: readIds }),
+    onSuccess: invalidate,
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -98,7 +110,16 @@ export function TeacherNotificationsPage() {
               isLoading={markAllRead.isPending}
               disabled={unreadCount === 0}
             >
-              Mark all read
+              Mark all read{unreadCount > 0 ? ` (${unreadCount})` : ''}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => clearRead.mutate()}
+              isLoading={clearRead.isPending}
+              disabled={readIds.length === 0}
+            >
+              Clear read ones
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setShowPreferences((v) => !v)}>
               {showPreferences ? 'Hide preferences' : 'Preferences'}
@@ -107,6 +128,8 @@ export function TeacherNotificationsPage() {
         }
       />
 
+      {markAllRead.error ? <ErrorState error={markAllRead.error} /> : null}
+      {clearRead.error ? <ErrorState error={clearRead.error} /> : null}
       {notice ? (
         <p className="rounded-lg bg-success-soft p-3 text-sm text-ink" role="status">
           {notice}
