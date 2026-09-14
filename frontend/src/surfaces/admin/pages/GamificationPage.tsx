@@ -40,6 +40,7 @@ import {
   fetchLeaderboards,
   updateLeaderboard,
 } from '@/leaderboard/leaderboard.api';
+import { ArchiveBoardModal, BoardStandingsModal } from './LeaderboardAdmin';
 import {
   LEADERBOARD_SCOPES_NEEDING_ID,
   type BoardSummary,
@@ -635,6 +636,8 @@ function LeaderboardSection({ canWrite }: { canWrite: boolean }) {
   const queryClient = useQueryClient();
   const [isOpen, setOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const [viewing, setViewing] = useState<BoardSummary | null>(null);
+  const [archiving, setArchiving] = useState<BoardSummary | null>(null);
   const query = useQuery({
     queryKey: qk.leaderboard.config({ page, pageSize: 10, includeArchived: false }),
     queryFn: () => fetchLeaderboards({ page, pageSize: 10, includeArchived: false }),
@@ -751,15 +754,23 @@ function LeaderboardSection({ canWrite }: { canWrite: boolean }) {
                     <Badge tone={board.isActive ? 'success' : 'neutral'}>
                       {board.isActive ? 'Published' : 'Off'}
                     </Badge>
+                    <Button size="sm" variant="ghost" onClick={() => setViewing(board)}>
+                      Standings
+                    </Button>
                     {canWrite ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        isLoading={toggleActive.isPending}
-                        onClick={() => toggleActive.mutate(board)}
-                      >
-                        {board.isActive ? 'Turn off' : 'Publish'}
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          isLoading={toggleActive.isPending}
+                          onClick={() => toggleActive.mutate(board)}
+                        >
+                          {board.isActive ? 'Turn off' : 'Publish'}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setArchiving(board)}>
+                          Archive
+                        </Button>
+                      </>
                     ) : null}
                   </div>
                 </li>
@@ -769,6 +780,8 @@ function LeaderboardSection({ canWrite }: { canWrite: boolean }) {
           {query.data ? <Pagination meta={query.data.meta} onPageChange={setPage} className="px-0" /> : null}
         </QueryBoundary>
       </CardBody>
+      {viewing ? <BoardStandingsModal board={viewing} canWrite={canWrite} onClose={() => setViewing(null)} /> : null}
+      {archiving ? <ArchiveBoardModal board={archiving} onClose={() => setArchiving(null)} /> : null}
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add a leaderboard">
           <form
