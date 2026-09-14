@@ -21,6 +21,8 @@ export interface SeverityPolicy {
 
 export interface IncidentRow {
   id: string;
+  /** `INC-2026-0007`. */
+  reference?: string;
   title: string;
   severity: IncidentSeverity;
   status: IncidentStatus;
@@ -30,21 +32,49 @@ export interface IncidentRow {
   dataAffected: boolean;
   schoolId: string | null;
   ownerUserId: string | null;
-  owner?: { id: string; displayName: string } | null;
   rootCause: string | null;
   preventiveActions: string | null;
   detectedAt: string;
   mitigatedAt: string | null;
   resolvedAt: string | null;
-  closedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  /** From the server's view wrapper: which response targets have passed. */
+  overdue?: { acknowledge: boolean; mitigate: boolean; notify: boolean };
+  /** From the server's view wrapper: whether it could be closed, and what is missing. */
+  closure?: { allowed: boolean; missing: string[] };
+}
+
+/**
+ * What every incident route actually returns: the row wrapped with its policy,
+ * targets and closure check. `platform.api.ts` flattens this into `IncidentRow`
+ * so screens read one shape.
+ */
+export interface IncidentView {
+  incident: Omit<IncidentRow, 'overdue' | 'closure'>;
+  isOpen: boolean;
+  overdue: { acknowledge: boolean; mitigate: boolean; notify: boolean };
+  closure: { allowed: boolean; missing: string[] };
+}
+
+/** Mirrors `updateIncidentSchema`. */
+export interface UpdateIncidentInput {
+  title?: string;
+  severity?: IncidentSeverity;
+  summary?: string;
+  impactSummary?: string;
+  dataAffected?: boolean;
+  rootCause?: string;
+  preventiveActions?: string;
 }
 
 export interface IncidentSummary {
+  byStatus: { status: IncidentStatus; count: number }[];
+  openBySeverity: { severity: IncidentSeverity; count: number }[];
   open: number;
-  bySeverity?: { severity: IncidentSeverity; count: number }[];
-  dataAffected?: number;
+  overdueMitigation: number;
+  awaitingNotification: number;
+  dataAffected: number;
 }
 
 export interface JobRunRow {
@@ -70,12 +100,21 @@ export interface JobHealthEntry {
 
 export interface PlatformSettingRow {
   key: string;
+  /** A secret comes back as a placeholder; it can be replaced, never read. */
   value: unknown;
   description: string | null;
-  /** Secret values are never returned in full; the server sends a placeholder. */
   isSecret: boolean;
-  isKnown?: boolean;
+  /** False when the key is stored but nothing in code reads it. */
+  declaredInCode?: boolean;
+  isRedacted?: boolean;
   updatedAt?: string;
+}
+
+/** `GET /platform/settings/catalogue` — the keys the code knows about. */
+export interface PlatformSettingSpec {
+  key: string;
+  description: string;
+  isSecret: boolean;
 }
 
 export interface FeatureDefinitionRow {
@@ -91,6 +130,7 @@ export interface FeatureDefinitionRow {
 }
 
 export interface ReleaseNoteRow {
+  id?: string;
   version: string;
   title: string;
   summary: string;
@@ -102,17 +142,48 @@ export interface ReleaseNoteRow {
   };
   /** Blueprint §05: a change that alters how evidence reads must say so. */
   affectsEvidenceInterpretation: boolean;
-  publishedAt: string | null;
+  audience?: string[] | null;
+  releasedAt: string;
+  isPublished: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
+/** Mirrors `releaseNoteSchema`. */
+export interface ReleaseNoteInput {
+  version: string;
+  title: string;
+  summary: string;
+  changes: { added?: string[]; changed?: string[]; fixed?: string[]; removed?: string[] };
+  affectsEvidenceInterpretation?: boolean;
+  releasedAt: string;
+  isPublished?: boolean;
+}
+
+/** Mirrors `PlatformOverview` in `platform.overview.service.ts`. */
 export interface PlatformOverview {
-  schools?: { total: number; active: number; suspended?: number };
-  users?: { total: number; active?: number };
-  incidents?: IncidentSummary;
-  jobs?: { failing: number; total: number };
-  support?: { open: number };
-  [key: string]: unknown;
+  generatedAt: string;
+  tenancy: { organizations: number; schools: number; activeSchools: number; classes: number };
+  people: {
+    total: number;
+    byStatus: { status: string; count: number }[];
+    activeStudents: number;
+    activeTeachers: number;
+  };
+  commercial: {
+    byPlan: { plan: string; count: number }[];
+    byStatus: { status: string; count: number }[];
+    expiringWithin30Days: number;
+    pastDue: number;
+  };
+  content: { lessons: number; publishedLessons: number; activities: number; questions: number };
+  engagement: { activeLast7Days: number; lessonCompletionsLast7Days: number; assignmentsOpen: number };
+  operations: {
+    openIncidents: number;
+    dataAffectedIncidents: number;
+    openSupportRequests: number;
+    unhealthyJobs: number;
+  };
 }
 
 export interface IncidentListQuery extends ListQuery {

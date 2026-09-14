@@ -4,13 +4,17 @@ import type {
   FeatureDefinitionRow,
   IncidentListQuery,
   IncidentRow,
+  IncidentView,
   IncidentSummary,
   JobHealthEntry,
   JobRunListQuery,
   JobRunRow,
   PlatformOverview,
   PlatformSettingRow,
+  PlatformSettingSpec,
+  ReleaseNoteInput,
   ReleaseNoteRow,
+  UpdateIncidentInput,
   SeverityPolicy,
 } from './platform.types';
 
@@ -58,8 +62,8 @@ export function fetchPlatformSettings(knownOnly?: boolean): Promise<PlatformSett
   return apiGet<PlatformSettingRow[]>('/platform/settings', { params: { knownOnly } });
 }
 
-export function fetchPlatformSettingCatalogue(): Promise<PlatformSettingRow[]> {
-  return apiGet<PlatformSettingRow[]>('/platform/settings/catalogue');
+export function fetchPlatformSettingCatalogue(): Promise<PlatformSettingSpec[]> {
+  return apiGet<PlatformSettingSpec[]>('/platform/settings/catalogue');
 }
 
 export function writePlatformSetting(input: {
@@ -85,12 +89,18 @@ export function fetchIncidentSummary(): Promise<IncidentSummary> {
   return apiGet<IncidentSummary>('/platform/incidents/summary');
 }
 
-export function fetchIncidents(query?: IncidentListQuery): Promise<Paginated<IncidentRow>> {
-  return apiGetPaged<IncidentRow>('/platform/incidents', query);
+/** Every incident route wraps the row; screens get one flat shape. */
+function flatten(view: IncidentView): IncidentRow {
+  return { ...view.incident, overdue: view.overdue, closure: view.closure };
 }
 
-export function fetchIncident(incidentId: string): Promise<IncidentRow> {
-  return apiGet<IncidentRow>(`/platform/incidents/${encodeURIComponent(incidentId)}`);
+export async function fetchIncidents(query?: IncidentListQuery): Promise<Paginated<IncidentRow>> {
+  const page = await apiGetPaged<IncidentView>('/platform/incidents', query);
+  return { ...page, items: page.items.map(flatten) };
+}
+
+export async function fetchIncident(incidentId: string): Promise<IncidentRow> {
+  return flatten(await apiGet<IncidentView>(`/platform/incidents/${encodeURIComponent(incidentId)}`));
 }
 
 export function createIncident(input: {
@@ -101,14 +111,11 @@ export function createIncident(input: {
   dataAffected?: boolean;
   impactSummary?: string;
 }): Promise<IncidentRow> {
-  return apiPost<IncidentRow>('/platform/incidents', input);
+  return apiPost<IncidentView>('/platform/incidents', input).then(flatten);
 }
 
-export function updateIncident(
-  incidentId: string,
-  input: Record<string, unknown>,
-): Promise<IncidentRow> {
-  return apiPatch<IncidentRow>(`/platform/incidents/${encodeURIComponent(incidentId)}`, input);
+export async function updateIncident(incidentId: string, input: UpdateIncidentInput): Promise<IncidentRow> {
+  return flatten(await apiPatch<IncidentView>(`/platform/incidents/${encodeURIComponent(incidentId)}`, input));
 }
 
 /**
@@ -120,10 +127,7 @@ export function setIncidentStatus(
   incidentId: string,
   input: { status: string; note?: string },
 ): Promise<IncidentRow> {
-  return apiPost<IncidentRow>(
-    `/platform/incidents/${encodeURIComponent(incidentId)}/status`,
-    input,
-  );
+  return apiPost<IncidentView>(`/platform/incidents/${encodeURIComponent(incidentId)}/status`, input).then(flatten);
 }
 
 // ── Scheduled jobs ──────────────────────────────────────────────────────────
@@ -142,13 +146,13 @@ export function fetchReleaseNotes(): Promise<Paginated<ReleaseNoteRow>> {
   return apiGetPaged<ReleaseNoteRow>('/platform/releases');
 }
 
-export function createReleaseNote(input: Record<string, unknown>): Promise<ReleaseNoteRow> {
+export function createReleaseNote(input: ReleaseNoteInput): Promise<ReleaseNoteRow> {
   return apiPost<ReleaseNoteRow>('/platform/releases', input);
 }
 
 export function updateReleaseNote(
   version: string,
-  input: Record<string, unknown>,
+  input: Partial<ReleaseNoteInput>,
 ): Promise<ReleaseNoteRow> {
   return apiPatch<ReleaseNoteRow>(`/platform/releases/${encodeURIComponent(version)}`, input);
 }

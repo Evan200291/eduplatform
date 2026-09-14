@@ -252,6 +252,8 @@ export const qk = {
     overview: ['platform', 'overview'] as const,
     features: (params?: unknown) => ['platform', 'features', params ?? {}] as const,
     settings: ['platform', 'settings'] as const,
+    settingCatalogue: ['platform', 'settings', 'catalogue'] as const,
+    incidentSummary: ['platform', 'incident-summary'] as const,
     severities: ['platform', 'severities'] as const,
     incidents: (params?: unknown) => ['platform', 'incidents', params ?? {}] as const,
     incident: (id: string) => ['platform', 'incident', id] as const,

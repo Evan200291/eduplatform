@@ -43,6 +43,14 @@ import type {
   JobRunRow,
   JobStatus,
 } from '@/platform/platform.types';
+import type { ReleaseNoteRow } from '@/platform/platform.types';
+import {
+  EditIncidentSection,
+  IncidentSummaryStrip,
+  OverviewPanel,
+  ReleaseNoteModal,
+  SettingsPanel,
+} from './PlatformEditors';
 
 /**
  * Platform operations (blueprint §13 and §17, UX brief N8–N12).
@@ -89,16 +97,20 @@ const JOB_TONE: Record<JobStatus, BadgeTone> = {
   SKIPPED: 'neutral',
 };
 
-type Tab = 'jobs' | 'incidents' | 'releases';
+type Tab = 'overview' | 'jobs' | 'incidents' | 'releases' | 'settings';
 
 export function PlatformOpsPage() {
   useDocumentTitle('Platform operations');
-  const [tab, setTab] = useState<Tab>('jobs');
+  const canOverview = useCan('platform.overview.read');
+  const canSettings = useCan('platform.settings.read');
+  const [tab, setTab] = useState<Tab>(canOverview ? 'overview' : 'jobs');
 
   const tabs: { id: Tab; label: string }[] = [
+    ...(canOverview ? [{ id: 'overview' as const, label: 'Overview' }] : []),
     { id: 'jobs', label: 'Jobs & health' },
     { id: 'incidents', label: 'Incidents' },
     { id: 'releases', label: 'Releases' },
+    ...(canSettings ? [{ id: 'settings' as const, label: 'Settings' }] : []),
   ];
 
   return (
@@ -123,9 +135,11 @@ export function PlatformOpsPage() {
         ))}
       </div>
 
+      {tab === 'overview' ? <OverviewPanel /> : null}
       {tab === 'jobs' ? <JobsPanel /> : null}
       {tab === 'incidents' ? <IncidentsPanel /> : null}
       {tab === 'releases' ? <ReleasesPanel /> : null}
+      {tab === 'settings' ? <SettingsPanel /> : null}
     </div>
   );
 }
@@ -331,6 +345,7 @@ function IncidentsPanel() {
 
   return (
     <div className="flex flex-col gap-6">
+      <IncidentSummaryStrip />
       {policies.data && policies.data.length > 0 ? (
         <Card>
           <CardHeader title="Severity policy" description="What each level commits Midas to." />
@@ -433,45 +448,48 @@ function IncidentDetailModal({
   onMove: (status: string, note?: string) => void;
   onClose: () => void;
 }) {
-  const [status, setStatus] = useState<string>(incident.status);
+  const [current, setCurrent] = useState(incident);
+  const [status, setStatus] = useState<string>(current.status);
   const [note, setNote] = useState('');
 
   return (
-    <Modal isOpen onClose={onClose} title={incident.title} size="lg">
+    <Modal isOpen onClose={onClose} title={current.title} size="lg">
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={SEVERITY_TONE[incident.severity]}>{incident.severity}</Badge>
-          <Badge tone={INCIDENT_STATUS_TONE[incident.status]}>
-            {INCIDENT_STATUS_LABEL[incident.status]}
+          <Badge tone={SEVERITY_TONE[current.severity]}>{current.severity}</Badge>
+          <Badge tone={INCIDENT_STATUS_TONE[current.status]}>
+            {INCIDENT_STATUS_LABEL[current.status]}
           </Badge>
-          {incident.dataAffected ? <Badge tone="danger">Data affected</Badge> : null}
+          {current.dataAffected ? <Badge tone="danger">Data affected</Badge> : null}
         </div>
 
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
           <dt className="text-ink-muted">Detected</dt>
-          <dd className="text-ink">{formatDateTime(incident.detectedAt)}</dd>
-          {incident.mitigatedAt ? (
+          <dd className="text-ink">{formatDateTime(current.detectedAt)}</dd>
+          {current.mitigatedAt ? (
             <>
               <dt className="text-ink-muted">Mitigated</dt>
-              <dd className="text-ink">{formatDateTime(incident.mitigatedAt)}</dd>
+              <dd className="text-ink">{formatDateTime(current.mitigatedAt)}</dd>
             </>
           ) : null}
-          {incident.resolvedAt ? (
+          {current.resolvedAt ? (
             <>
               <dt className="text-ink-muted">Resolved</dt>
-              <dd className="text-ink">{formatDateTime(incident.resolvedAt)}</dd>
+              <dd className="text-ink">{formatDateTime(current.resolvedAt)}</dd>
             </>
           ) : null}
         </dl>
 
-        <div className="rounded-md bg-surface-sunken p-3 text-sm text-ink">{incident.summary}</div>
+        <div className="rounded-md bg-surface-sunken p-3 text-sm text-ink">{current.summary}</div>
 
-        {incident.rootCause ? (
+        {current.rootCause ? (
           <div>
             <p className="mb-1 text-sm font-medium text-ink">Root cause</p>
-            <p className="text-sm text-ink-muted">{incident.rootCause}</p>
+            <p className="text-sm text-ink-muted">{current.rootCause}</p>
           </div>
         ) : null}
+
+        {canWrite ? <EditIncidentSection incident={current} onSaved={setCurrent} /> : null}
 
         {canWrite ? (
           <div className="border-t border-border pt-4">
@@ -498,7 +516,7 @@ function IncidentDetailModal({
               <div>
                 <Button
                   isLoading={isMoving}
-                  disabled={status === incident.status}
+                  disabled={status === current.status}
                   onClick={() => onMove(status, note.trim() || undefined)}
                 >
                   Update status
@@ -598,11 +616,23 @@ function RecordIncidentModal({ onClose }: { onClose: () => void }) {
 }
 
 function ReleasesPanel() {
+  const canWrite = useCan('platform.releases.write');
+  const [editing, setEditing] = useState<ReleaseNoteRow | 'new' | null>(null);
   const query = useQuery({ queryKey: qk.platform.releases, queryFn: () => fetchReleaseNotes() });
 
   return (
     <Card>
-      <CardHeader title="Releases" description="What shipped, and what it changed." />
+      <CardHeader
+        title="Releases"
+        description="What shipped, and what it changed."
+        actions={
+          canWrite ? (
+            <Button size="sm" leadingIcon={<IconAdd aria-hidden className="h-4 w-4" />} onClick={() => setEditing('new')}>
+              New release note
+            </Button>
+          ) : undefined
+        }
+      />
       <CardBody>
         <QueryBoundary
           isLoading={query.isPending}
@@ -620,6 +650,12 @@ function ReleasesPanel() {
                     <span className="text-sm font-medium text-ink">{release.title}</span>
                     {release.affectsEvidenceInterpretation ? (
                       <Badge tone="warning">Changes how evidence reads</Badge>
+                    ) : null}
+                    {release.isPublished ? null : <Badge tone="neutral">Draft</Badge>}
+                    {canWrite ? (
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(release)}>
+                        Edit
+                      </Button>
                     ) : null}
                   </div>
                   <p className="mb-2 text-sm text-ink-muted">{release.summary}</p>
@@ -645,6 +681,9 @@ function ReleasesPanel() {
           )}
         </QueryBoundary>
       </CardBody>
+      {editing ? (
+        <ReleaseNoteModal existing={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />
+      ) : null}
     </Card>
   );
 }
