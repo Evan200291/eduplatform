@@ -24,6 +24,7 @@ import { fetchFeatureCatalogue, setEntitlement } from '@/entitlements/entitlemen
 import type { CatalogueEntry, EntitlementScopeType, FeatureCategory } from '@/entitlements/entitlements.types';
 import { fetchClasses, fetchGrades, fetchSubjects } from '@/academic/academic.api';
 import { ROLE_KEYS, type RoleKey } from '@/types/enums';
+import { EntitlementRulesCard, ExplainCard } from './FeatureRules';
 
 /** Scopes a school-level admin can target from this screen. Platform-owned
  * scopes (PLATFORM/PLAN/ORGANIZATION) are gated separately below. */
@@ -83,6 +84,7 @@ export function FeaturesPage() {
   useDocumentTitle('Features');
   const queryClient = useQueryClient();
   const canWrite = useCan('entitlement.write');
+  const canReadRules = useCan('entitlement.read');
   const isPlatformStaff = Boolean(useProfile()?.isPlatformStaff);
   const [category, setCategory] = useState<FeatureCategory | ''>('');
 
@@ -322,6 +324,13 @@ export function FeaturesPage() {
           </QueryBoundary>
         </CardBody>
       </Card>
+
+      {canReadRules ? (
+        <>
+          <ExplainCard />
+          <EntitlementRulesCard canWrite={canWrite} />
+        </>
+      ) : null}
     </div>
   );
 }
