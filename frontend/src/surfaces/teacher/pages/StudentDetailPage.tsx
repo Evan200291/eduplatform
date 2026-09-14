@@ -27,6 +27,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title';
 import { humanize, toneFor } from '../lib/humanize';
 import type { StudentNavState } from '../lib/nav-state';
 import { RecognitionActions, StudentMissionsCard } from './StudentRecognition';
+import { StudentRewardsRecord } from './StudentRewardsRecord';
 import { ChangeMasteryButton, TeacherJudgmentsCard } from './StudentMasteryTools';
 import { NotesCard } from './StudentNotes';
 import { AttemptReviewModal } from './AttemptReview';
@@ -266,6 +267,8 @@ function StudentDetail({ studentId }: { studentId: string }) {
         />
 
         <StudentMissionsCard studentId={studentId} className="lg:col-span-2" />
+
+        <StudentRewardsRecord studentId={studentId} className="lg:col-span-2" />
 
         {navState.classId ? (
           <Card className="lg:col-span-2">

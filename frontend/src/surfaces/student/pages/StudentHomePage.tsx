@@ -29,6 +29,7 @@ import { paths } from '@/routes/paths';
 import { Tile } from '../components/Tile';
 import { OnboardingTour, useOnboardingTour } from '../components/OnboardingTour';
 import { playAccent } from '../play-accents';
+import { NewBadgesBanner } from '../components/ProfileExtras';
 
 /**
  * The learner's home page.
@@ -79,6 +80,8 @@ export function StudentHomePage() {
         </h1>
         <p className="text-lg text-ink-muted">Pick something to do.</p>
       </header>
+
+      <NewBadgesBanner />
 
       <QueryBoundary isLoading={dashboard.isPending} error={dashboard.error}>
         {dashboard.data ? (

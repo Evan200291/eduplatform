@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Card, CardBody, CardHeader, EmptyState, IconBadge, Pagination } from '@/components/ui';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button, Card, CardBody, CardHeader, EmptyState, IconBadge, Pagination } from '@/components/ui';
+import { useCan } from '@/auth';
 import { QueryBoundary } from '@/components/feedback';
 import { cn } from '@/lib/cn';
 import { formatRelative } from '@/lib/format';
-import { fetchBadgeProgress, fetchPointsLedger } from '@/gamification/gamification.api';
+import { fetchBadgeProgress, fetchMyBadgeAwards, fetchPointsLedger, markBadgesSeen } from '@/gamification/gamification.api';
 import { qk } from '@/query/keys';
 
 /**
@@ -114,6 +115,49 @@ export function PointsHistoryCard() {
           </ul>
           {query.data ? <Pagination meta={query.data.meta} onPageChange={setPage} className="px-0" /> : null}
         </QueryBoundary>
+      </CardBody>
+    </Card>
+  );
+}
+
+/**
+ * The moment a learner first sees a badge they have earned. Awards arrive in
+ * the background (a finished mission, a teacher's award), so without this the
+ * learner only finds out by visiting their profile. "Got it" marks every new
+ * award as seen so the banner does not come back.
+ */
+export function NewBadgesBanner() {
+  const canSee = useCan('badge.read');
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: qk.badges.mine(),
+    queryFn: () => fetchMyBadgeAwards(),
+    enabled: canSee,
+  });
+  const seen = useMutation({
+    mutationFn: () => markBadgesSeen(),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: qk.badges.mine() }),
+  });
+  const fresh = (query.data?.items ?? []).filter((award) => !award.seenAt && !award.revokedAt);
+  if (!canSee || fresh.length === 0) return null;
+
+  return (
+    <Card className="border-2 border-play-2 bg-surface">
+      <CardBody className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span aria-hidden className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-play-2">
+            <IconBadge className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="font-semibold text-ink">
+              {fresh.length === 1 ? 'You earned a new badge!' : `You earned ${fresh.length} new badges!`}
+            </p>
+            <p className="text-sm text-ink-muted">{fresh.map((award) => award.badge.name).join(', ')}</p>
+          </div>
+        </div>
+        <Button size="sm" isLoading={seen.isPending} onClick={() => seen.mutate()}>
+          Got it
+        </Button>
       </CardBody>
     </Card>
   );
