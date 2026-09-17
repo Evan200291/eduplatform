@@ -14,6 +14,7 @@ import {
   IconArchive,
   IconBack,
   IconEdit,
+  IconRetry,
   IconSend,
   Input,
   Modal,
@@ -30,6 +31,7 @@ import {
   giveAttemptFeedback,
   publishAssignment,
   reinstateLearners,
+  syncAssignmentAttempts,
   updateAssignment,
 } from '@/assignments/assignments.api';
 import type { Assignment } from '@/assignments/assignments.types';
@@ -115,6 +117,12 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string }) {
     mutationFn: () => archiveAssignment(assignmentId),
     onSuccess: invalidateAssignment,
   });
+  const sync = useMutation({
+    mutationFn: () => syncAssignmentAttempts(assignmentId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.assignments.monitor(assignmentId) });
+    },
+  });
 
   const assignmentQuery = useQuery({
     queryKey: qk.assignments.detail(assignmentId),
@@ -177,6 +185,17 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string }) {
                       Add learners
                     </Button>
                   ) : null}
+                  {!assignmentQuery.data.archivedAt && assignmentQuery.data.isPublished ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leadingIcon={<IconRetry aria-hidden className="h-4 w-4" />}
+                      onClick={() => sync.mutate()}
+                      isLoading={sync.isPending}
+                    >
+                      Sync new learners
+                    </Button>
+                  ) : null}
                   {!assignmentQuery.data.isPublished && !assignmentQuery.data.archivedAt ? (
                     <Button
                       variant="outline"
@@ -220,6 +239,14 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string }) {
 
       {publish.error ? <ErrorState error={publish.error} /> : null}
       {archive.error ? <ErrorState error={archive.error} /> : null}
+      {sync.error ? <ErrorState error={sync.error} /> : null}
+      {sync.isSuccess ? (
+        <Badge tone={sync.data.attemptsCreated > 0 ? 'success' : 'neutral'}>
+          {sync.data.attemptsCreated > 0
+            ? `Added ${sync.data.attemptsCreated} learner${sync.data.attemptsCreated === 1 ? '' : 's'} who joined since this was set.`
+            : 'Everyone targeted already has an attempt row.'}
+        </Badge>
+      ) : null}
 
       <Card>
         <CardHeader title="Learners" description="One row per learner this assignment reaches." />

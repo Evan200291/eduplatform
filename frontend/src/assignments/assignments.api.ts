@@ -68,6 +68,17 @@ export function archiveAssignment(assignmentId: string): Promise<Assignment> {
   return apiPost<Assignment>(`/assignments/${encodeURIComponent(assignmentId)}/archive`);
 }
 
+/**
+ * Re-runs the fan-out to targeted learners after the class roster changed, so
+ * someone who joined after the work was set gets an attempt row too. Nobody
+ * already covered is re-notified.
+ */
+export function syncAssignmentAttempts(
+  assignmentId: string,
+): Promise<{ recipients: number; attemptsCreated: number }> {
+  return apiPost(`/assignments/${encodeURIComponent(assignmentId)}/sync-attempts`);
+}
+
 export function fetchAssignmentMonitor(assignmentId: string): Promise<{
   attempts: AssignmentAttempt[];
   byState: Record<string, number>;
