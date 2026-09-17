@@ -12,8 +12,8 @@ import {
   Textarea,
   type Column,
 } from '@/components/ui';
-import { ErrorState, QueryBoundary } from '@/components/feedback';
-import { saveBlob, toApiError } from '@/api';
+import { ErrorState, QueryBoundary, errorCopy } from '@/components/feedback';
+import { saveBlob } from '@/api';
 import { assignClassTeacher, createClass, fetchAllGrades, fetchAllSubjects } from '@/academic/academic.api';
 import { createInvitation, fetchUsers } from '@/users/users.api';
 import { readCsvRecords } from '@/lib/csv';
@@ -156,7 +156,7 @@ export function StaffImportModal({ onClose, onDone }: { onClose: () => void; onD
           const invitation = await createInvitation({ email: row.email, roleKey: row.roleKey });
           results.push({ line: row.line, label: row.email, ok: true, detail: invitation.invitationUrl });
         } catch (cause) {
-          results.push({ line: row.line, label: row.email, ok: false, detail: toApiError(cause).message });
+          results.push({ line: row.line, label: row.email, ok: false, detail: errorCopy(cause).title });
         }
         setProgress(results.length);
       }
@@ -295,12 +295,12 @@ export function ClassImportModal({ onClose }: { onClose: () => void }) {
               await assignClassTeacher(created.id, { userId: row.teacherId, isLead: true });
               detail += `, lead teacher ${row.teacherLabel}`;
             } catch (cause) {
-              detail += `, but the teacher was not assigned: ${toApiError(cause).message}`;
+              detail += `, but the teacher was not assigned: ${errorCopy(cause).title}`;
             }
           }
           results.push({ line: row.line, label: row.name, ok: true, detail });
         } catch (cause) {
-          results.push({ line: row.line, label: row.name, ok: false, detail: toApiError(cause).message });
+          results.push({ line: row.line, label: row.name, ok: false, detail: errorCopy(cause).title });
         }
         setProgress(results.length);
       }

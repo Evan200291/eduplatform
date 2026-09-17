@@ -33,7 +33,7 @@ import {
   runReport,
 } from '@/reporting/reporting.api';
 import type { ReportDefinition, ReportRunResult } from '@/reporting/reporting.types';
-import { saveBlob } from '@/api';
+import { ApiError, saveBlob } from '@/api';
 import { ArchiveReportModal, ExportsCard, ReportDefinitionModal } from './ReportEditors';
 
 /** Sleeps, then polls the export row until it leaves QUEUED/RUNNING. */
@@ -79,7 +79,16 @@ export function AnalyticsPage() {
       const queued = await requestReportExport({ definitionId: definition.id, format, ...range });
       const finished = await waitForExport(queued.id);
       if (finished.status !== 'READY') {
-        throw new Error(finished.failureReason ?? 'The export did not finish in time — try again shortly.');
+        // A plain Error here would be swallowed: ErrorState only shows an error's
+        // own message for ApiError with VALIDATION_FAILED and no issues, and
+        // falls back to generic copy for everything else. Shaping this as that
+        // same case is what gets the specific reason in front of the user.
+        throw new ApiError({
+          code: 'VALIDATION_FAILED',
+          message: finished.failureReason ?? 'The export did not finish in time — try again shortly.',
+          status: 0,
+          issues: [],
+        });
       }
       const { blob, fileName } = await downloadReportExport(finished.id);
       saveBlob(blob, fileName);

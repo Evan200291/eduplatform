@@ -38,7 +38,6 @@ import {
 } from '@/theme/theme.api';
 import type { ThemeRow, ThemeStatus } from '@/theme/theme.types';
 import { publicMediaFileUrl, uploadMedia } from '@/content/content.api';
-import { toApiError } from '@/api';
 
 const STATUS_TONE: Record<ThemeStatus, BadgeTone> = {
   DRAFT: 'neutral',
@@ -663,7 +662,7 @@ function LogoField({
   onChange: (mediaId: string | null) => void;
   themeName: string;
 }) {
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   const upload = useMutation({
     mutationFn: (file: File) =>
@@ -676,7 +675,9 @@ function LogoField({
       setError(null);
       onChange(asset.id);
     },
-    onError: (cause) => setError(toApiError(cause).message),
+    // Routed through ErrorState/errorCopy below rather than rendering
+    // `.message` directly, matching every other error display in this app.
+    onError: (cause) => setError(cause),
   });
 
   return (
@@ -718,7 +719,7 @@ function LogoField({
       </div>
 
       {upload.isPending ? <p className="mt-2 text-sm text-ink-muted">Uploading…</p> : null}
-      {error ? <p className="mt-2 text-sm text-danger-strong">{error}</p> : null}
+      {error ? <ErrorState error={error} className="mt-2" /> : null}
     </Field>
   );
 }

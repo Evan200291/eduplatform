@@ -711,6 +711,13 @@ function LeaderboardSection({ canWrite }: { canWrite: boolean }) {
     : toggleActive.error instanceof ApiError && toggleActive.error.code === 'FEATURE_DISABLED'
       ? 'Leaderboards are switched off for this school — turn on "Leaderboard enabled" in Settings before publishing a board.'
       : 'Could not update that board.';
+  // Built as an ApiError (VALIDATION_FAILED, no issues) rather than a plain
+  // Error: ErrorState/errorCopy only ever show a non-ApiError's own message
+  // for that one shape, so a plain `new Error(...)` here would silently
+  // render as generic fallback copy instead of the specific reason above.
+  const toggleActiveError = toggleActiveErrorMessage
+    ? new ApiError({ code: 'VALIDATION_FAILED', message: toggleActiveErrorMessage, status: 0, issues: [] })
+    : null;
 
   return (
     <Card>
@@ -729,9 +736,7 @@ function LeaderboardSection({ canWrite }: { canWrite: boolean }) {
           Boards sit behind the school's "Leaderboard enabled" switch in Settings. Each board has
           its own identity display, ranking basis, and scope; a new board always starts switched off.
         </p>
-        {toggleActiveErrorMessage ? (
-          <ErrorState error={new Error(toggleActiveErrorMessage)} className="mb-3" />
-        ) : null}
+        {toggleActiveError ? <ErrorState error={toggleActiveError} className="mb-3" /> : null}
         <QueryBoundary isLoading={query.isPending} error={query.error} onRetry={() => void query.refetch()}>
           {query.data && query.data.items.length === 0 ? (
             <EmptyState title="No leaderboards configured" />

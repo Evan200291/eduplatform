@@ -19,12 +19,11 @@ import {
   Select,
   Textarea,
 } from '@/components/ui';
-import { QueryBoundary } from '@/components/feedback';
+import { ErrorState, QueryBoundary } from '@/components/feedback';
 import { qk } from '@/query/keys';
 import { useCan } from '@/auth';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { formatDateTime } from '@/lib/format';
-import { toApiError } from '@/api';
 import { fetchContentReports, resolveContentReport } from '@/content/content.api';
 import { moderationTarget, type ModerationTargetState } from '@/content/moderation-targets';
 import { ModerationLogCard } from './ModerationReviews';
@@ -416,9 +415,7 @@ function ReviewDialog({
           <Textarea rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
         </Field>
 
-        {mutation.error ? (
-          <p className="text-sm text-danger-strong">{toApiError(mutation.error).message}</p>
-        ) : null}
+        {mutation.error ? <ErrorState error={mutation.error} /> : null}
       </div>
     </Modal>
   );
