@@ -191,6 +191,7 @@ function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; on
   return (
     <Modal isOpen onClose={onClose} title="New assessment">
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();
@@ -378,6 +379,7 @@ function AssessmentDetailModal({
 
             {canWrite ? (
               <form
+                noValidate
                 className="grid grid-cols-2 gap-4"
                 onSubmit={(event) => {
                   event.preventDefault();

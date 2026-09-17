@@ -288,6 +288,7 @@ function NicknameModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal isOpen onClose={onClose} title="Change my name">
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();

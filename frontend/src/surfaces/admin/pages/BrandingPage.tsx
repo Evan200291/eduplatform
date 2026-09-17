@@ -329,6 +329,7 @@ function CreateThemeModal({
   return (
     <Modal isOpen onClose={onClose} title={basedOn ? `Duplicate "${basedOn.name}"` : 'New theme'}>
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();
@@ -395,6 +396,7 @@ function PublishModal({
   return (
     <Modal isOpen onClose={onClose} title={`Publish "${theme.name}"`}>
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();
@@ -452,6 +454,7 @@ function RollbackModal({
           <p className="text-sm text-ink-muted">This theme has no published version history yet.</p>
         ) : (
           <form
+            noValidate
             className="flex flex-col gap-4"
             onSubmit={(event) => {
               event.preventDefault();
@@ -530,6 +533,7 @@ function EditThemeModal({
   return (
     <Modal isOpen onClose={onClose} title={`Edit "${theme.name}"`} size="lg">
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();

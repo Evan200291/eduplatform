@@ -373,6 +373,7 @@ function AdjustPointsModal({
   return (
     <Modal isOpen onClose={onClose} title="Adjust points">
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();
@@ -424,6 +425,7 @@ function FreezeStreakModal({
   return (
     <Modal isOpen onClose={onClose} title="Grant a streak freeze">
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();
@@ -482,6 +484,7 @@ function StatusModal({
   return (
     <Modal isOpen onClose={onClose} title={isActive ? 'Suspend account' : 'Reactivate account'}>
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();
@@ -538,6 +541,7 @@ function ResetCredentialsModal({
         </div>
       ) : (
         <form
+          noValidate
           className="flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();
@@ -587,6 +591,7 @@ function GrantRoleModal({
   return (
     <Modal isOpen onClose={onClose} title="Grant a role">
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();

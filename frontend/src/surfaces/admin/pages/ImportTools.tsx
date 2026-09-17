@@ -404,6 +404,7 @@ export function AddClassModal({ onClose, onCreated }: { onClose: () => void; onC
   return (
     <Modal isOpen onClose={onClose} title="Add a class">
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();

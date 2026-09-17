@@ -237,6 +237,7 @@ function EditModal({
   return (
     <Modal isOpen onClose={onClose} title="Edit school">
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();
@@ -291,6 +292,7 @@ function StatusModal({
   return (
     <Modal isOpen onClose={onClose} title="Change status">
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();

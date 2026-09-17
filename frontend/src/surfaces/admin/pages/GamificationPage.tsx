@@ -216,6 +216,7 @@ function BadgesSection({ canWrite }: { canWrite: boolean }) {
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add a badge">
           <form
+            noValidate
             className="flex flex-col gap-4"
             onSubmit={(event) => {
               event.preventDefault();
@@ -368,6 +369,7 @@ function RewardsSection({ canWrite }: { canWrite: boolean }) {
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add a reward">
           <form
+            noValidate
             className="flex flex-col gap-4"
             onSubmit={(event) => {
               event.preventDefault();
@@ -540,6 +542,7 @@ function MissionsSection({ canWrite }: { canWrite: boolean }) {
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add a mission">
           <form
+            noValidate
             className="flex flex-col gap-4"
             onSubmit={(event) => {
               event.preventDefault();
@@ -785,6 +788,7 @@ function LeaderboardSection({ canWrite }: { canWrite: boolean }) {
       {isOpen ? (
         <Modal isOpen onClose={() => setOpen(false)} title="Add a leaderboard">
           <form
+            noValidate
             className="flex flex-col gap-4"
             onSubmit={(event) => {
               event.preventDefault();
@@ -907,6 +911,7 @@ function CompanionGrowthSection() {
         )}
         {save.error ? <ErrorState error={save.error} className="mb-3" /> : null}
         <form
+          noValidate
           className="flex flex-col gap-3"
           onSubmit={(event) => {
             event.preventDefault();
@@ -971,6 +976,7 @@ function StreakConfigSection() {
             </p>
             {save.error ? <ErrorState error={save.error} className="mb-3" /> : null}
             <form
+              noValidate
               className="flex flex-col gap-4"
               onSubmit={(event) => {
                 event.preventDefault();

@@ -293,6 +293,7 @@ function InviteModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
         </div>
       ) : (
         <form
+          noValidate
           className="flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();
@@ -301,12 +302,7 @@ function InviteModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
         >
           {invite.error ? <ErrorState error={invite.error} /> : null}
           <Field label="Email address" isRequired>
-            <Input
-              type="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
+            <Input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
           </Field>
           <Field label="Role" isRequired>
             <Select
@@ -385,6 +381,7 @@ function AddUserModal({ onClose, onDone }: { onClose: () => void; onDone: () => 
         </div>
       ) : (
         <form
+          noValidate
           className="flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();
@@ -498,6 +495,7 @@ function BulkImportModal({ onClose, onDone }: { onClose: () => void; onDone: () 
         </div>
       ) : (
         <form
+          noValidate
           className="flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();

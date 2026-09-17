@@ -159,6 +159,7 @@ function CreateSchoolModal({
   return (
     <Modal isOpen onClose={onClose} title="New school">
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();

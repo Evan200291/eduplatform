@@ -143,6 +143,7 @@ function SettingsForm({
 
   return (
     <form
+      noValidate
       className="flex flex-col gap-6"
       onSubmit={(event) => {
         event.preventDefault();
@@ -593,6 +594,7 @@ function RetentionPolicyModal({
   return (
     <Modal isOpen onClose={onClose} title={`Retention — ${option.label}`}>
       <form
+        noValidate
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();
