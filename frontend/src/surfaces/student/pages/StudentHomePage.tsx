@@ -16,12 +16,14 @@ import {
   IconProgress,
   IconStart,
   IconStreak,
+  IconUser,
   text,
 } from '@/components/ui';
 import { QueryBoundary } from '@/components/feedback';
 import { cn } from '@/lib/cn';
 import { useCan, useProfile } from '@/auth';
 import { fetchLearnerDashboard } from '@/dashboard/dashboard.api';
+import { nextActionPath } from '@/dashboard/next-action-path';
 import { qk } from '@/query/keys';
 import { itemsPerRow, useAgeMode } from '@/theme';
 import { useDocumentTitle } from '@/hooks/use-document-title';
@@ -103,7 +105,7 @@ export function StudentHomePage() {
                       </p>
                     </div>
                   </div>
-                  <ButtonLink to={dashboard.data.nextAction.path} size="lg">
+                  <ButtonLink to={nextActionPath(dashboard.data.nextAction)} size="lg">
                     Continue
                   </ButtonLink>
                 </CardBody>
@@ -215,6 +217,18 @@ export function StudentHomePage() {
               accentIndex={5}
             />
           ) : null}
+          {/*
+            The only route into StudentProfilePage — badges, points and buddy.
+            No permission gates it in student.routes.tsx, so nothing gates the
+            tile either; it existed with no link pointing at it before this.
+          */}
+          <Tile
+            to={paths.learn.profile}
+            label="My profile"
+            description="Your badges, points and buddy."
+            icon={IconUser}
+            accentIndex={3}
+          />
         </div>
       </section>
 

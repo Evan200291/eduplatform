@@ -1,10 +1,27 @@
 /** Mirrors `backend/src/modules/dashboard` — one aggregate call per surface home screen. */
 
+/** Mirrors `LEARNER_ACTIONS` in `dashboard.insights.ts`. */
+export type LearnerActionKind =
+  | 'FINISH_SCREENING'
+  | 'FINISH_OVERDUE'
+  | 'RESUME_ACTIVITY'
+  | 'START_ASSIGNMENT'
+  | 'CONTINUE_PATH'
+  | 'FINISH_MISSION'
+  | 'PRACTISE_TOPIC'
+  | 'EXPLORE';
+
+/**
+ * The server names *what* to do next and *why*, not *where* — it has no notion
+ * of a frontend route. `path` does not exist on the wire; see
+ * `next-action-path.ts` for the client-side mapping from `kind` to a URL.
+ */
 export interface LearnerAction {
-  kind: string;
+  kind: LearnerActionKind;
   label: string;
-  path: string;
-  reason?: string;
+  reason: string;
+  targetId: string | null;
+  targetType: 'ACTIVITY' | 'ASSIGNMENT' | 'PATH_ITEM' | 'MISSION' | 'TOPIC' | 'ASSESSMENT' | null;
 }
 
 export interface LearnerDashboard {
