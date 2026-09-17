@@ -5,6 +5,68 @@ here instead of re-deriving what the last one learned.
 
 ---
 
+## 2026-09-17 — Frontend: systematic sweep for unwired and unrouted code
+
+Asked to check the whole codebase for anything unwired or unrouted, not just
+re-read the existing docs. All checks pass in `frontend/`: typecheck, lint (the
+one old warning), 58 tests (4 new), build.
+
+### What was checked
+
+1. Every exported `*.api.ts` function against the rest of `frontend/src` — the
+   existing method, re-run. Same 26 results as documented, all genuinely
+   redundant with a list call already on screen.
+2. Every backend route's most specific path segment against every frontend
+   `.api.ts` file — new this round, to catch a route with **no** wrapper at
+   all (the first check only catches an unused wrapper; it assumes one was
+   written).
+3. Every exported page/modal component against `*.routes.tsx` and against
+   every other file in `src` — to tell a genuinely dead component from a
+   sub-component only reachable through its parent page.
+4. Every `useCan` / `anyOf` permission string against the backend's real
+   permission list.
+5. Every frontend string-literal union type named after a Prisma enum,
+   diffed value-for-value against that enum.
+
+### What turned up
+
+- **`POST /assignments/:id/sync-attempts` had no frontend wrapper at all.**
+  "Picks up learners who joined the class after the work was set." Added
+  `syncAssignmentAttempts` to `assignments.api.ts` and a "Sync new learners"
+  button to `AssignmentDetailPage`, next to "Add learners".
+- **The learner dashboard's `nextAction.path` doesn't exist on the wire.**
+  `LearnerAction` was typed with a `path: string` field; the server's actual
+  shape (`dashboard.insights.ts`) is `{ kind, label, reason, targetId,
+  targetType }` — no `path`, ever. The student home page's "Next up" button —
+  described in its own comment as "the loudest thing on the screen" — has
+  been linking to `undefined` for every learner, on every visit. Fixed the
+  type and added `dashboard/next-action-path.ts`, mapping each `kind` to a
+  route (`FINISH_SCREENING` → the screening page; the three assignment kinds
+  → My progress, where `SetWorkList` can actually start the attempt server-side
+  first; the rest → the learner's active path or missions).
+- **Two routed pages had no link to them anywhere in the app**, which the
+  route-vs-nav check alone can't see (a route file will happily list a page
+  nothing points at). `/learn/screening` was only reachable through the
+  broken `nextAction` link above — fixed by the same change. `/learn/profile`
+  (badges, points, buddy) had no nav tab, no tile, and the shared `UserMenu`
+  avatar dropdown goes to `/account/preferences` for every role. Added a tile
+  for it on the student home page.
+- **`TenantStatus` was wrong, and nothing caught it because the type itself
+  was the source of truth for its own check.** `'PENDING'` doesn't exist on
+  the server; `'PROSPECT'` and `'TRIAL'` do and were missing. Every
+  `Record<TenantStatus, BadgeTone>` badge-colour map (4 admin pages) silently
+  had no colour for a prospect or trial school. The status-change dropdown on
+  two of those pages offered "Pending" as a choice, which the server has
+  always rejected with a validation error. Fixed the type in both places it's
+  declared and all four maps and both dropdowns.
+- **`BillingInterval` was missing `'QUARTERLY'`**, which the server has always
+  accepted. The agreement create/edit form couldn't offer it. Fixed.
+
+`UNWIRED-ROUTES.md` has the full list and the reasoning for each. Nothing here
+needed a backend change — all fixes are frontend type corrections or UI wiring.
+
+---
+
 ## 2026-09-14 (second round) — Frontend: PRD v2.5 decisions the website alone could finish
 
 All checks pass in `frontend/`: typecheck, lint (the one old warning), 54 tests
