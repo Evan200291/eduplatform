@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import {
   Badge,
   Button,
@@ -98,12 +99,12 @@ export function AssessmentPage() {
         description="Screening, ongoing checks and topic checks. Mastery thresholds are set per topic."
         actions={
           <div className="flex items-center gap-3">
-            <a
-              href={paths.admin.curriculum}
+            <Link
+              to={paths.admin.curriculum}
               className="inline-flex items-center gap-1 text-sm text-primary-strong hover:underline"
             >
               Curriculum topics <IconExternal aria-hidden className="h-4 w-4" />
-            </a>
+            </Link>
             {canWrite ? (
               <Button size="sm" leadingIcon={<IconAdd aria-hidden className="h-4 w-4" />} onClick={() => setCreating(true)}>
                 New assessment
