@@ -27,8 +27,9 @@ import { createOrganization, fetchOrganizations } from '@/tenancy/tenancy.api';
 import type { OrganizationSummary, TenantStatus } from '@/tenancy/tenancy.types';
 
 const STATUS_TONE: Record<TenantStatus, BadgeTone> = {
+  PROSPECT: 'neutral',
+  TRIAL: 'info',
   ACTIVE: 'success',
-  PENDING: 'info',
   SUSPENDED: 'warning',
   ARCHIVED: 'danger',
 };

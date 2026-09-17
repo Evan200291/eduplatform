@@ -2,7 +2,8 @@ import type { ListQuery } from '@/api/types';
 
 /** Mirrors `backend/src/modules/tenancy` — organizations and schools. */
 
-export type TenantStatus = 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED' | 'PENDING';
+/** Mirrors the Prisma `TenantStatus` enum. `PROSPECT` and `TRIAL` are pre-`ACTIVE`, not "pending". */
+export type TenantStatus = 'PROSPECT' | 'TRIAL' | 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
 
 export interface OrganizationSummary {
   id: string;

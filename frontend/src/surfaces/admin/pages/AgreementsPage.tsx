@@ -67,8 +67,9 @@ const STATUS_LABEL: Record<SubscriptionStatus, string> = {
 const STATUS_OPTIONS = Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }));
 
 const INTERVAL_OPTIONS: { value: BillingInterval; label: string }[] = [
-  { value: 'ANNUAL', label: 'Annual' },
   { value: 'MONTHLY', label: 'Monthly' },
+  { value: 'QUARTERLY', label: 'Quarterly' },
+  { value: 'ANNUAL', label: 'Annual' },
   { value: 'CUSTOM', label: 'Custom term' },
 ];
 

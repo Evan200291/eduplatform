@@ -6,7 +6,7 @@ import type { AgeMode, LoginMethod, RoleKey, RoleScopeType, UserStatus } from '@
  * the whole client — nothing else should model "the current user".
  */
 
-export type TenantStatus = 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED' | 'PENDING';
+export type TenantStatus = 'PROSPECT' | 'TRIAL' | 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
 
 export interface OrganizationRef {
   id: string;

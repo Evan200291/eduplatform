@@ -5,7 +5,7 @@ import type { FeatureCategory } from '@/entitlements/entitlements.types';
 
 export type SubscriptionPlan = 'PILOT' | 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
 export type SubscriptionStatus = 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED';
-export type BillingInterval = 'MONTHLY' | 'ANNUAL' | 'CUSTOM';
+export type BillingInterval = 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'CUSTOM';
 
 export interface PlanFeatureSummary {
   key: string;

@@ -31,11 +31,25 @@ import type { TenantStatus } from '@/tenancy/tenancy.types';
 import { SchoolSettingsCard } from './SettingsPage';
 
 const STATUS_TONE: Record<TenantStatus, BadgeTone> = {
+  PROSPECT: 'neutral',
+  TRIAL: 'info',
   ACTIVE: 'success',
-  PENDING: 'info',
   SUSPENDED: 'warning',
   ARCHIVED: 'danger',
 };
+
+/**
+ * Every status the server accepts on `POST /schools/:id/status`. This drove a
+ * fifth, invented option — "PENDING" — that the server's `TenantStatus` enum has
+ * never had; picking it always failed with a validation error.
+ */
+const TENANT_STATUS_OPTIONS: { value: TenantStatus; label: string }[] = [
+  { value: 'PROSPECT', label: 'Prospect' },
+  { value: 'TRIAL', label: 'Trial' },
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'SUSPENDED', label: 'Suspended' },
+  { value: 'ARCHIVED', label: 'Archived' },
+];
 
 /** One school: its settings, theme, entitlements at a glance, and its staff counts. */
 export function SchoolDetailPage() {
@@ -288,10 +302,7 @@ function StatusModal({
           <Select
             value={status}
             onChange={(event) => setStatus(event.target.value as TenantStatus)}
-            options={(['ACTIVE', 'SUSPENDED', 'ARCHIVED', 'PENDING'] as TenantStatus[]).map((s) => ({
-              value: s,
-              label: s,
-            }))}
+            options={TENANT_STATUS_OPTIONS}
           />
         </Field>
         <Field label="Reason" isRequired hint="Recorded on the audit trail.">
