@@ -27,7 +27,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title';
 import { paths } from '@/routes/paths';
 import { assignRole, fetchUser, resetUserCredentials, revokeRole, setUserStatus } from '@/users/users.api';
 import type { RoleAssignmentRow } from '@/users/users.types';
-import { ROLE_KEYS, ROLE_SCOPE_TYPES } from '@/types/enums';
+import { ROLE_SCOPE_TYPES, SCHOOL_ROLE_KEYS } from '@/types/enums';
 import { adjustPoints, fetchMyStreaks, fetchPointsBalance, freezeStreak } from '@/gamification/gamification.api';
 import { EditUserModal } from './UserEditors';
 
@@ -603,7 +603,7 @@ function GrantRoleModal({
           <Select
             value={roleKey}
             onChange={(event) => setRoleKey(event.target.value)}
-            options={ROLE_KEYS.map((r) => ({ value: r, label: roleLabel(r) }))}
+            options={SCHOOL_ROLE_KEYS.map((r) => ({ value: r, label: roleLabel(r) }))}
           />
         </Field>
         <Field label="Scope" isRequired hint="Grade, class and subject scopes need that item selected elsewhere first; school-wide is the common case.">

@@ -22,6 +22,21 @@ export const ROLE_KEYS = [
 ] as const;
 export type RoleKey = (typeof ROLE_KEYS)[number];
 
+/** The two roles that carry platform-wide authority, not scoped to any one school. */
+export const PLATFORM_ROLE_KEYS = ['PLATFORM_OWNER', 'PLATFORM_OPS_ADMIN'] as const;
+
+/**
+ * Roles it makes sense to hand out from a school-scoped screen (creating a
+ * user, inviting staff, granting an extra role from a user's detail page).
+ * Excludes `PLATFORM_OWNER` and `PLATFORM_OPS_ADMIN` — those two admin
+ * panel routes sit inside `RequireSchoolContext` and act on one school at a
+ * time, so offering a platform-wide role there would let a school-scoped
+ * action hand out platform-wide access.
+ */
+export const SCHOOL_ROLE_KEYS = ROLE_KEYS.filter(
+  (role) => !(PLATFORM_ROLE_KEYS as readonly string[]).includes(role),
+) as Exclude<RoleKey, (typeof PLATFORM_ROLE_KEYS)[number]>[];
+
 export const ROLE_SCOPE_TYPES = [
   'PLATFORM',
   'ORGANIZATION',

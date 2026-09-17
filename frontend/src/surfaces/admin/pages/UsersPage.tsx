@@ -29,7 +29,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title';
 import { paths } from '@/routes/paths';
 import { bulkCreateStudents, createInvitation, createUser, fetchUsers } from '@/users/users.api';
 import type { BulkStudentResult, UserSummary } from '@/users/users.types';
-import { ROLE_KEYS } from '@/types/enums';
+import { ROLE_KEYS, SCHOOL_ROLE_KEYS } from '@/types/enums';
 import { GroupsCard, InvitationsCard } from './UserEditors';
 import { StaffImportModal } from './ImportTools';
 
@@ -41,7 +41,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   ARCHIVED: 'danger',
 };
 
-const STAFF_ROLES = ROLE_KEYS.filter((role) => role !== 'STUDENT');
+const STAFF_ROLES = SCHOOL_ROLE_KEYS.filter((role) => role !== 'STUDENT');
 
 function roleLabel(role: string): string {
   return role.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
@@ -401,7 +401,7 @@ function AddUserModal({ onClose, onDone }: { onClose: () => void; onDone: () => 
             <Select
               value={primaryRole}
               onChange={(event) => setPrimaryRole(event.target.value)}
-              options={ROLE_KEYS.map((r) => ({ value: r, label: roleLabel(r) }))}
+              options={SCHOOL_ROLE_KEYS.map((r) => ({ value: r, label: roleLabel(r) }))}
             />
           </Field>
           {primaryRole === 'STUDENT' ? (

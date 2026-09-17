@@ -13,13 +13,14 @@ import {
   PageHeader,
 } from '@/components/ui';
 import { ErrorState, QueryBoundary } from '@/components/feedback';
+import { ApiError } from '@/api';
 import { useCan } from '@/auth';
 import { qk } from '@/query/keys';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { assignRole, fetchUser, fetchUsers, revokeRole } from '@/users/users.api';
 import type { UserSummary } from '@/users/users.types';
 import { fetchRolePermissions } from '@/roles/roles.api';
-import { ROLE_KEYS, type RoleKey } from '@/types/enums';
+import { PLATFORM_ROLE_KEYS, ROLE_KEYS, type RoleKey } from '@/types/enums';
 
 function roleLabel(role: string): string {
   return role.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
@@ -169,7 +170,16 @@ function RoleDetailModal({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const canAssign = useCan('role.assign');
+  /**
+   * This page and its grant action are scoped to one school (nested under
+   * `RequireSchoolContext`), and every grant here is hard-coded to
+   * `scopeType: 'SCHOOL'`. Platform-wide roles are shown above for visibility
+   * — an admin can see who already holds one — but are never grantable from
+   * here, the same reasoning `GrantRoleModal` on the user detail page and
+   * `SCHOOL_ROLE_KEYS` follow.
+   */
+  const isPlatformRole = (PLATFORM_ROLE_KEYS as readonly string[]).includes(role);
+  const canAssign = useCan('role.assign') && !isPlatformRole;
   const canRevoke = useCan('role.revoke');
   const [grantSearch, setGrantSearch] = useState('');
 
@@ -208,9 +218,17 @@ function RoleDetailModal({
         (row) => row.roleKey === role && row.scopeType === 'SCHOOL',
       );
       if (!assignment) {
-        throw new Error(
-          'No school-level grant of this role was found for that user — it may only be their primary role from account creation, or scoped to a grade, class or subject.',
-        );
+        // Shaped as VALIDATION_FAILED with no issues so ErrorState shows this
+        // specific message instead of falling back to generic copy — a plain
+        // Error's message never reaches the user (see AnalyticsPage for the
+        // same pattern).
+        throw new ApiError({
+          code: 'VALIDATION_FAILED',
+          message:
+            'No school-level grant of this role was found for that user — it may only be their primary role from account creation, or scoped to a grade, class or subject.',
+          status: 0,
+          issues: [],
+        });
       }
       return revokeRole(assignment.id, `Revoked from Roles & access (${roleLabel(role)}).`);
     },
