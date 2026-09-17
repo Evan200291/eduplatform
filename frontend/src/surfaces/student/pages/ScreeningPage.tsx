@@ -30,7 +30,7 @@ export function ScreeningPage() {
 
   const query = useQuery({
     queryKey: qk.assessment.definitions({ kind: 'SCREENING' }),
-    queryFn: () => fetchAssessments(),
+    queryFn: () => fetchAssessments({ kind: 'SCREENING' }),
   });
 
   const screening = query.data?.items.find((a) => a.kind === 'SCREENING');

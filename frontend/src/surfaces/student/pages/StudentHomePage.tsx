@@ -34,6 +34,19 @@ import { playAccent } from '../play-accents';
 import { NewBadgesBanner } from '../components/ProfileExtras';
 
 /**
+ * Tailwind needs literal class names to pick them up at build time, so
+ * `itemsPerRow`'s age-mode column count is mapped to a fixed set of
+ * responsive classes rather than interpolated. Two columns hold at every
+ * width below `sm` regardless of age mode — this surface is mobile-first —
+ * and the grid only widens past that once there's room for it.
+ */
+const TILE_GRID_CLASS: Record<number, string> = {
+  2: 'grid-cols-2',
+  3: 'grid-cols-2 sm:grid-cols-3',
+  4: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4',
+};
+
+/**
  * The learner's home page.
  *
  * Leads with one clear next action (blueprint §03: "the student must always
@@ -168,10 +181,15 @@ export function StudentHomePage() {
 
       <section className="flex flex-col gap-3">
         <h2 className={cn(text.eyebrow, 'sr-only sm:not-sr-only')}>Where to go</h2>
-        <div
-          className="grid gap-4"
-          style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
-        >
+        {/*
+          `columns` (from `itemsPerRow`) is the age-appropriate ceiling for wide
+          screens, but this surface is mobile-first — a bare `repeat(columns, …)`
+          inline style ignored viewport width entirely, so every age mode above
+          EARLY_YEARS packed 3-4 tiles into a 375px-wide screen. Two columns on a
+          phone, growing to the age-mode's own cap from `sm` up, keeps each tile
+          readable at every width.
+        */}
+        <div className={cn('grid grid-cols-2 gap-4', TILE_GRID_CLASS[columns] ?? '')}>
           {canLearn ? (
             <Tile
               to={paths.learn.activities}
