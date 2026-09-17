@@ -103,6 +103,7 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string }) {
   const [action, setAction] = useState<AttemptAction | null>(null);
   const [isEditing, setEditing] = useState(false);
   const [isAdding, setAdding] = useState(false);
+  const [isArchiveConfirming, setArchiveConfirming] = useState(false);
 
   const invalidateAssignment = () => {
     void queryClient.invalidateQueries({ queryKey: qk.assignments.detail(assignmentId) });
@@ -115,7 +116,10 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string }) {
   });
   const archive = useMutation({
     mutationFn: () => archiveAssignment(assignmentId),
-    onSuccess: invalidateAssignment,
+    onSuccess: () => {
+      setArchiveConfirming(false);
+      invalidateAssignment();
+    },
   });
   const sync = useMutation({
     mutationFn: () => syncAssignmentAttempts(assignmentId),
@@ -212,8 +216,7 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string }) {
                       variant="ghost"
                       size="sm"
                       leadingIcon={<IconArchive aria-hidden className="h-4 w-4" />}
-                      onClick={() => archive.mutate()}
-                      isLoading={archive.isPending}
+                      onClick={() => setArchiveConfirming(true)}
                     >
                       Archive
                     </Button>
@@ -238,7 +241,6 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string }) {
       ) : null}
 
       {publish.error ? <ErrorState error={publish.error} /> : null}
-      {archive.error ? <ErrorState error={archive.error} /> : null}
       {sync.error ? <ErrorState error={sync.error} /> : null}
       {sync.isSuccess ? (
         <Badge tone={sync.data.attemptsCreated > 0 ? 'success' : 'neutral'}>
@@ -326,6 +328,30 @@ function AssignmentDetail({ assignmentId }: { assignmentId: string }) {
             invalidateAssignment();
           }}
         />
+      ) : null}
+
+      {isArchiveConfirming ? (
+        <Modal
+          isOpen
+          onClose={() => setArchiveConfirming(false)}
+          title="Archive this assignment?"
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setArchiveConfirming(false)} disabled={archive.isPending}>
+                Keep it
+              </Button>
+              <Button variant="danger" isLoading={archive.isPending} onClick={() => archive.mutate()}>
+                Archive
+              </Button>
+            </>
+          }
+        >
+          {archive.error ? <ErrorState error={archive.error} /> : null}
+          <p className="text-ink">
+            Learners stop seeing it in their set work. Everything already submitted stays on the record, and
+            it can be set again from here at any time.
+          </p>
+        </Modal>
       ) : null}
     </div>
   );

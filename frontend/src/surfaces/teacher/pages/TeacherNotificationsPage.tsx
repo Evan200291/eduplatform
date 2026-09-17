@@ -38,7 +38,7 @@ import { humanize, toneFor } from '../lib/humanize';
 import { useCan } from '@/auth';
 import { ComposeMessageModal } from '@/notifications/ComposeMessage';
 
-const PRIORITY_TONE = { LOW: 'neutral', NORMAL: 'info', HIGH: 'warning', URGENT: 'danger' } as const;
+const PRIORITY_TONE = { LOW: 'neutral', NORMAL: 'info', HIGH: 'warning', CRITICAL: 'danger' } as const;
 
 const STATE_OPTIONS: SelectOption[] = [
   { value: '', label: 'All' },
