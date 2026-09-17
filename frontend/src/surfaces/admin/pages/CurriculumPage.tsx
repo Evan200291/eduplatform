@@ -14,7 +14,7 @@ import {
   PageHeader,
   Select,
 } from '@/components/ui';
-import { ErrorState, QueryBoundary } from '@/components/feedback';
+import { ErrorState, QueryBoundary, errorCopy } from '@/components/feedback';
 import { useCan } from '@/auth';
 import { qk } from '@/query/keys';
 import { useDocumentTitle } from '@/hooks/use-document-title';
@@ -125,7 +125,14 @@ function LifecycleControl({
           </Button>
         ))}
       </div>
-      {error ? <p className="text-xs text-danger-strong">{error instanceof Error ? error.message : 'That move failed.'}</p> : null}
+      {/*
+        `errorCopy(error).title` rather than `error.message` — the server's
+        message is written for a developer reading a log except in the one case
+        `errorCopy` already special-cases (a `badRequest()` refusal with no
+        field to blame it on, which is exactly what a rejected lifecycle move
+        is). Reading `.message` directly here bypassed that entirely.
+      */}
+      {error ? <p className="text-xs text-danger-strong">{errorCopy(error).title}</p> : null}
     </div>
   );
 }
@@ -136,14 +143,12 @@ function LifecycleControl({
  * `curriculum.validation.ts` — an int between 50 and 100.
  */
 function MasteryThresholdControl({
-  topicId,
   value,
   canWrite,
   isPending,
   error,
   onSave,
 }: {
-  topicId: string;
   value: number;
   canWrite: boolean;
   isPending: boolean;
@@ -220,11 +225,7 @@ function MasteryThresholdControl({
         </Button>
       </div>
       {validationError ? <p className="text-xs text-danger-strong">{validationError}</p> : null}
-      {error ? (
-        <p className="text-xs text-danger-strong">
-          {error instanceof Error ? error.message : `Couldn't save mastery threshold for topic ${topicId}.`}
-        </p>
-      ) : null}
+      {error ? <p className="text-xs text-danger-strong">{errorCopy(error).title}</p> : null}
     </div>
   );
 }
@@ -457,7 +458,6 @@ function TopicsCard({
                   />
                 </div>
                 <MasteryThresholdControl
-                  topicId={topic.id}
                   value={topic.masteryThreshold}
                   canWrite={canWrite}
                   isPending={updateMastery.isPending && updateMastery.variables?.id === topic.id}

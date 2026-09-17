@@ -3,9 +3,10 @@ import { ApiError, CLIENT_ERROR_CODES } from '@/api';
 /**
  * User-facing copy for each error code the backend can return.
  *
- * The server's `message` is written for a developer reading a log. This maps the
- * stable `code` to something a teacher or a nine-year-old can act on, which is
- * why gating and messaging both key off `code` and never off `message`.
+ * The server's `message` is written for a developer reading a log — that rule
+ * has exactly one deliberate exception, `VALIDATION_FAILED` with no field
+ * issues attached (see `errorCopy` below). Everywhere else, gating and
+ * messaging both key off `code` and never off `message`.
  *
  * `action` is the recovery hint — every error a user can do something about
  * should say what.
@@ -85,8 +86,26 @@ const FALLBACK: ErrorCopy = {
 };
 
 export function errorCopy(error: unknown): ErrorCopy {
-  if (error instanceof ApiError) return COPY[error.code] ?? FALLBACK;
-  return FALLBACK;
+  if (!(error instanceof ApiError)) return FALLBACK;
+
+  /**
+   * `VALIDATION_FAILED` covers two different things the backend never tells
+   * the client apart on `code` alone: real per-field schema validation (Zod,
+   * via `validationFailed(issues)` — `issues` is non-empty, and the generic
+   * "check the highlighted fields" copy below is correct because the fields
+   * themselves already say what's wrong) and a general business-rule refusal
+   * with nowhere to point a field at (`badRequest(message)` — 122 call sites
+   * across the backend, none of which ever pass `issues`, e.g. "That
+   * invitation has expired. Ask your administrator for a new one."). For the
+   * second kind the generic copy is not just vague, it's actively wrong —
+   * there are no highlighted fields — so the server's own message, which was
+   * hand-written for exactly this situation, is used instead.
+   */
+  if (error.code === 'VALIDATION_FAILED' && error.issues.length === 0) {
+    return { title: error.message };
+  }
+
+  return COPY[error.code] ?? FALLBACK;
 }
 
 /** The support reference to show alongside a server fault. */
