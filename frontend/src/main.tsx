@@ -23,7 +23,11 @@ import './styles/global.css';
 
 applyPreferences(usePreferences.getState());
 
-void authActions.bootstrap();
+void (async () => {
+  const previewApplied =
+    import.meta.env.DEV && (await import('@/dev/apply-preview-persona')).applyPreviewPersonaFromUrl();
+  if (!previewApplied) void authActions.bootstrap();
+})();
 
 const container = document.getElementById('root');
 
