@@ -14,7 +14,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 BRANCH="${DEPLOY_BRANCH:-main}"
-PORT="${DEPLOY_PORT:-4000}"
+ENV_PORT="$(grep -E '^\s*PORT\s*=' backend/.env 2>/dev/null | head -1 | tr -dc '0-9' || true)"
+PORT="${DEPLOY_PORT:-${ENV_PORT:-4000}}"
 
 bold() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 warn() { printf '\033[33m!  %s\033[0m\n' "$1"; }

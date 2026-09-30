@@ -12,6 +12,23 @@
  * frontend/dist is served directly by nginx (see docs/DEPLOYMENT.md), which is
  * faster at static files and handles TLS termination.
  */
+const fs = require('fs');
+const path = require('path');
+
+// The port lives in backend/.env so a shared VPS can give this app a free one
+// without editing a tracked file. Falls back to 4000 when .env or PORT is absent.
+function readPort() {
+  try {
+    const env = fs.readFileSync(path.join(__dirname, 'backend', '.env'), 'utf8');
+    const match = env.match(/^\s*PORT\s*=\s*"?(\d+)"?\s*$/m);
+    if (match) return Number(match[1]);
+  } catch {
+    // no .env yet — use the default
+  }
+  return 4000;
+}
+const PORT = readPort();
+
 module.exports = {
   apps: [
     {
@@ -32,11 +49,11 @@ module.exports = {
       listen_timeout: 10000,
       env: {
         NODE_ENV: 'development',
-        PORT: 4000,
+        PORT,
       },
       env_production: {
         NODE_ENV: 'production',
-        PORT: 4000,
+        PORT,
       },
       error_file: './logs/api-error.log',
       out_file: './logs/api-out.log',
