@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Midas — Sunny design prototype (all pages)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap">
+<link rel="stylesheet" href="kids.css">
+</head>
+<body>
+<script>if(/[?&]bare/.test(location.search))document.documentElement.classList.add('bare')</script>
+<div class="viewer">
+  <nav class="viewer-nav" id="nav" aria-label="Pages"></nav>
+  <main class="viewer-main">
+    <div class="viewer-bar" id="bar"></div>
+    <div id="stage"></div>
+    <p class="note" id="note"></p>
+  </main>
+</div>
+<script src="mascot.js"></script>
+<script src="helpers.js"></script>
+<script src="pages-student.js"></script>
+<script src="pages-teacher.js"></script>
+<script src="pages-admin.js"></script>
+<script src="pages-shared.js"></script>
+<script>
+/* Viewer: page list on the left, state + age + device controls on top, the screen in the middle. */
+const view = { id: location.hash.slice(1) || 'home', state: 0, theme: 'tiny', device: 'auto' };
+const GROUP_ORDER = ['Sign-in & account', 'Learner', 'Teacher', 'Admin', 'System'];
+const $ = (s) => document.querySelector(s);
+
+function page() { return PAGES.find((p) => p.id === view.id) || PAGES[0]; }
+
+function drawNav() {
+  const groups = {};
+  PAGES.forEach((p) => (groups[p.group] = groups[p.group] || []).push(p));
+  $('#nav').innerHTML = `<h1>☀️ Sunny design</h1><div class="sub">${PAGES.length} pages · every route in the app</div>` +
+    GROUP_ORDER.filter((g) => groups[g]).map((g) => `<h4>${g} (${groups[g].length})</h4>` + groups[g].map((p) => `<a class="${p.id === view.id ? 'on' : ''}" onclick="go('${p.id}')">${p.title}</a>`).join('')).join('');
+}
+
+function frameKind(p) {
+  if (view.device !== 'auto') return view.device;
+  return p.mode === 'adult' ? 'desktop' : 'phone';
+}
+
+function draw() {
+  const p = page();
+  const states = p.states || ['Default'];
+  view.state = Math.min(view.state, states.length - 1);
+  const st = states[view.state];
+  const kind = frameKind(p);
+  const themeCls = p.mode === 'adult' ? 'theme-adult' : (p.mode === 'auth' ? 'theme-junior' : `theme-${view.theme}`);
+  const learner = p.mode === 'learner' || p.mode === 'learner-bare';
+
+  $('#bar').innerHTML =
+    `<div class="seg">${states.map((s, i) => `<button class="${i === view.state ? 'on' : ''}" onclick="setState(${i})">${s}</button>`).join('')}</div>` +
+    (learner ? `<div class="seg"><button class="${view.theme === 'tiny' ? 'on' : ''}" onclick="setTheme('tiny')">Ages 5–8 (K–2)</button><button class="${view.theme === 'junior' ? 'on' : ''}" onclick="setTheme('junior')">Ages 8–11</button></div>` : '') +
+    `<div class="seg">${[['auto', 'Auto'], ['phone', 'Phone'], ['tablet', 'Tablet'], ['desktop', 'Desktop']].map(([k, l]) => `<button class="${view.device === k ? 'on' : ''}" onclick="setDevice('${k}')">${l}</button>`).join('')}</div>`;
+
+  const cls = kind === 'desktop' ? 'desk' : kind === 'tablet' ? 'phone tablet' : 'phone';
+  $('#stage').innerHTML = `<div class="${cls} ${themeCls}" id="frame">${p.render(st)}</div>`;
+  $('#note').innerHTML = `<b>${p.title}</b> · real route <code>${p.route}</code> · state: ${st}`;
+  document.title = `${p.title} · Sunny prototype`;
+  drawNav();
+}
+function go(id) { view.id = id; view.state = 0; location.hash = id; draw(); }
+function setState(i) { view.state = i; draw(); }
+function setTheme(t) { view.theme = t; draw(); }
+function setDevice(d) { view.device = d; draw(); }
+window.addEventListener('hashchange', () => { view.id = location.hash.slice(1) || 'home'; view.state = 0; draw(); });
+/* Options in the prototype are clickable so the feel of the design can be judged. */
+document.addEventListener('click', (e) => {
+  const opt = e.target.closest('.opt');
+  if (opt && !opt.closest('.opt-grid, .stack, .screen')) return;
+  if (opt) {
+    const sibs = opt.parentElement.querySelectorAll('.opt');
+    sibs.forEach((s) => s.classList.remove('picked'));
+    opt.classList.add('picked');
+  }
+});
+draw();
+</script>
+</body>
+</html>
