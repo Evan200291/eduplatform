@@ -39,9 +39,14 @@ export function isYoungLearner(mode: AgeMode): boolean {
   return ageBelow(mode, 'LOWER_SECONDARY');
 }
 
-/** Publishes the mode to the document so CSS and tests can read it. */
+/** Publishes the mode (and the kid flag) to the document so CSS and tests can read it. */
 export function applyAgeMode(mode: AgeMode): void {
-  document.documentElement.dataset.ageMode = mode;
+  const root = document.documentElement;
+  root.dataset.ageMode = mode;
+  // `data-kid` is what styles/kids.css keys on, so the playful layer is a single
+  // attribute selector rather than a list of age modes repeated in every rule.
+  if (isYoungLearner(mode)) root.dataset.kid = '';
+  else delete root.dataset.kid;
 }
 
 export const AGE_MODE_LABELS: Record<AgeMode, string> = {

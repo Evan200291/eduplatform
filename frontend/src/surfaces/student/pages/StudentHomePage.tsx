@@ -20,12 +20,13 @@ import {
   text,
 } from '@/components/ui';
 import { QueryBoundary } from '@/components/feedback';
+import { Buddy, ReadAloudButton } from '@/components/kids';
 import { cn } from '@/lib/cn';
 import { useCan, useProfile } from '@/auth';
 import { fetchLearnerDashboard } from '@/dashboard/dashboard.api';
 import { nextActionPath } from '@/dashboard/next-action-path';
 import { qk } from '@/query/keys';
-import { itemsPerRow, useAgeMode } from '@/theme';
+import { isYoungLearner, itemsPerRow, useAgeMode } from '@/theme';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { paths } from '@/routes/paths';
 import { Tile } from '../components/Tile';
@@ -88,12 +89,18 @@ export function StudentHomePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <p className={text.eyebrow}>Your learning</p>
-        <h1 className={cn(text.heading, 'text-3xl')}>
-          {firstName ? `Hello, ${firstName}!` : 'Hello!'}
-        </h1>
-        <p className="text-lg text-ink-muted">Pick something to do.</p>
+      <header className="flex items-end gap-3">
+        {isYoungLearner(ageMode) ? <Buddy mood="happy" size={96} /> : null}
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <p className={text.eyebrow}>Your learning</p>
+          <h1 className={cn(text.heading, 'text-3xl')}>
+            {firstName ? `Hello, ${firstName}!` : 'Hello!'}
+          </h1>
+          <p className="text-lg text-ink-muted">Pick something to do.</p>
+        </div>
+        {isYoungLearner(ageMode) ? (
+          <ReadAloudButton text={`${firstName ? `Hello, ${firstName}!` : 'Hello!'} Pick something to do.`} />
+        ) : null}
       </header>
 
       <NewBadgesBanner />

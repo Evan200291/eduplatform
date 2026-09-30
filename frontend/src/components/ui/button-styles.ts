@@ -43,9 +43,10 @@ const RAISED_VARIANTS: ReadonlySet<ButtonVariant> = new Set(['primary', 'seconda
  * refusing input is telling the user it worked.
  */
 const raised = cn(
-  'shadow-[0_4px_0_0_var(--edge)]',
-  'active:translate-y-[2px] active:shadow-[0_2px_0_0_var(--edge)]',
-  'disabled:translate-y-0 disabled:shadow-[0_4px_0_0_var(--edge)]',
+  // `--edge-h` is 4px by default and thicker for young learners (styles/kids.css).
+  'shadow-[0_var(--edge-h)_0_0_var(--edge)]',
+  'active:translate-y-[calc(var(--edge-h)_-_2px)] active:shadow-[0_2px_0_0_var(--edge)]',
+  'disabled:translate-y-0 disabled:shadow-[0_var(--edge-h)_0_0_var(--edge)]',
 );
 
 export interface ButtonStyleOptions {
@@ -62,7 +63,7 @@ export function buttonClasses({
   className,
 }: ButtonStyleOptions = {}): string {
   return cn(
-    'inline-flex select-none items-center justify-center gap-2 rounded-md font-heading font-medium',
+    'kid-btn inline-flex select-none items-center justify-center gap-2 rounded-md font-heading font-medium',
     // Transform is animated alongside colour so the press reads as motion, not
     // a jump. Both collapse to 0ms under the reduced-motion token.
     'transition-[background-color,border-color,color,box-shadow,transform] duration-fast ease-standard',

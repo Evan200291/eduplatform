@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, CardBody, IconHelp, Input, focusRing, text } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { Buddy, ReadAloudButton } from '@/components/kids';
 import type { DeliveryQuestion } from '@/content/content.types';
 import type { ResponseInput } from '@/assessment/assessment.types';
 import { isYoungLearner } from '@/theme/age-mode';
@@ -175,7 +176,14 @@ export function QuestionCard({ question, onSubmit, isSubmitting, feedback, onCon
   return (
     <Card>
       <CardBody className="flex flex-col gap-4 p-6">
-        <p className={cn(text.heading, 'text-xl text-balance')}>{question.prompt}</p>
+        {/*
+          A learner who cannot yet read the prompt can hear it: young age modes get
+          a read-aloud button beside it (it renders nothing on a device with no voice).
+        */}
+        <div className="flex items-start justify-between gap-3">
+          <p className={cn(text.heading, 'text-xl text-balance')}>{question.prompt}</p>
+          {young ? <ReadAloudButton text={question.prompt} /> : null}
+        </div>
 
         {question.type === 'MULTIPLE_CHOICE' ? (
           <div className="flex flex-col gap-2">
@@ -183,10 +191,11 @@ export function QuestionCard({ question, onSubmit, isSubmitting, feedback, onCon
               <button
                 key={option.id}
                 type="button"
+                aria-pressed={selectedOptionId === option.id}
                 disabled={!canAnswer}
                 onClick={() => setSelectedOptionId(option.id)}
                 className={cn(
-                  'min-h-touch rounded-lg border-2 px-4 py-3 text-left text-lg font-medium',
+                  'kid-option min-h-touch rounded-lg border-2 px-4 py-3 text-left text-lg font-medium',
                   'transition-[background-color,border-color,color] duration-fast ease-standard',
                   focusRing,
                   selectedOptionId === option.id
@@ -300,7 +309,7 @@ export function QuestionCard({ question, onSubmit, isSubmitting, feedback, onCon
                         disabled={!canAnswer}
                         onClick={() => setActiveLeftId(option.id)}
                         className={cn(
-                          'min-h-touch rounded-lg border-2 px-3 py-2 text-left text-base font-medium',
+                          'kid-option min-h-touch rounded-lg border-2 px-3 py-2 text-left text-base font-medium',
                           'transition-[background-color,border-color,color] duration-fast ease-standard',
                           focusRing,
                           isActive
@@ -341,7 +350,7 @@ export function QuestionCard({ question, onSubmit, isSubmitting, feedback, onCon
                           setActiveLeftId(null);
                         }}
                         className={cn(
-                          'min-h-touch rounded-lg border-2 px-3 py-2 text-left text-base font-medium',
+                          'kid-option min-h-touch rounded-lg border-2 px-3 py-2 text-left text-base font-medium',
                           'transition-[background-color,border-color,color] duration-fast ease-standard',
                           focusRing,
                           takenBy
@@ -392,23 +401,28 @@ export function QuestionCard({ question, onSubmit, isSubmitting, feedback, onCon
                 : 'border-secondary-muted bg-secondary-soft',
             )}
           >
-            <p
-              className={cn(
-                text.heading,
-                'text-lg',
-                feedback.isCorrect ? 'text-success-strong' : 'text-secondary-strong',
-              )}
-            >
-              {feedback.isCorrect === true
-                ? young
-                  ? 'Brilliant, you got it!'
-                  : 'Correct.'
-                : feedback.isCorrect === false
+            <div className="flex items-center gap-3">
+              {young && feedback.isCorrect !== undefined ? (
+                <Buddy mood={feedback.isCorrect ? 'cheer' : 'oops'} size={64} bob={false} />
+              ) : null}
+              <p
+                className={cn(
+                  text.heading,
+                  'text-lg',
+                  feedback.isCorrect ? 'text-success-strong' : 'text-secondary-strong',
+                )}
+              >
+                {feedback.isCorrect === true
                   ? young
-                    ? 'Not quite, but good try!'
-                    : 'Not this time.'
-                  : 'Answer recorded.'}
-            </p>
+                    ? 'Brilliant, you got it!'
+                    : 'Correct.'
+                  : feedback.isCorrect === false
+                    ? young
+                      ? 'Not quite, but good try!'
+                      : 'Not this time.'
+                    : 'Answer recorded.'}
+              </p>
+            </div>
             {feedback.feedback ? <p className="leading-body text-ink">{feedback.feedback}</p> : null}
             {feedback.isCorrect === false ? (
               <WrongAnswerHelp young={young} hints={question.hints.map((hint) => hint.body)} />

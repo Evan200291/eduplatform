@@ -44,10 +44,10 @@ export function ProgressBar({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={label}
-        className="h-2 w-full overflow-hidden rounded-full bg-surface-sunken"
+        className="kid-bar-track h-2 w-full overflow-hidden rounded-full bg-surface-sunken"
       >
         <div
-          className={cn('h-full rounded-full transition-[width] duration-base', tones[tone])}
+          className={cn('kid-bar-fill h-full rounded-full transition-[width] duration-base', tones[tone])}
           style={{ width: `${percent}%` }}
         />
       </div>

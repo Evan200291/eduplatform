@@ -1,0 +1,299 @@
+/*
+ * "Sunny" kid layer — Kindergarten to Grade 2, and up to Grade 5.
+ *
+ * Switched on by `data-kid` on <html>, which `applyAgeMode()` sets for the
+ * EARLY_YEARS and PRIMARY age modes only (see src/theme/age-mode.ts). Teachers,
+ * admins and older learners never match these rules, so nothing here can leak
+ * into the adult surfaces.
+ *
+ * It only *adds* to the design system: raised edges, rounder corners, bigger
+ * targets, a rounded typeface, chunkier progress, and a handful of components
+ * (Buddy, LessonPath, Confetti). Colours still come from the school's theme
+ * tokens, so a school's rebrand carries through unchanged.
+ *
+ * Prototype for every screen: docs/design/kids/index.html
+ */
+
+:root {
+  /* Thickness of a raised control's solid bottom edge. Read by button-styles.ts. */
+  --edge-h: 4px;
+  --kid-font: 'Nunito', 'Baloo 2', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+  --kid-zig: 44px;
+}
+
+:root[data-kid] {
+  --edge-h: 6px;
+}
+
+:root[data-age-mode='EARLY_YEARS'] {
+  --edge-h: 7px;
+  --kid-zig: 52px;
+}
+
+/* ── Type: a rounded face for headings, buttons and labels ───────────────── */
+:root[data-kid] :is(h1, h2, h3, h4, .font-heading, .kid-btn) {
+  font-family: var(--kid-font);
+}
+
+/* ── Buttons: loud, uppercase, and they sink when pressed ────────────────── */
+:root[data-kid] .kid-btn {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 900;
+  border-radius: var(--midas-radius-lg);
+}
+
+:root[data-kid] .kid-btn:where(.underline) {
+  text-transform: none;
+}
+
+/* ── Cards: a soft solid edge instead of a blurred shadow ────────────────── */
+:root[data-kid] .kid-card {
+  border-width: 2px;
+  border-radius: var(--midas-radius-lg);
+  box-shadow: 0 var(--edge-h) 0 var(--midas-color-border);
+}
+
+:root[data-kid] .kid-card:hover {
+  box-shadow: 0 var(--edge-h) 0 var(--midas-color-border);
+}
+
+/* ── Home tiles ──────────────────────────────────────────────────────────── */
+:root[data-kid] .kid-tile {
+  border-radius: var(--midas-radius-lg);
+  box-shadow: 0 var(--edge-h) 0 var(--midas-color-border-strong);
+}
+
+:root[data-kid] .kid-tile:active {
+  transform: translateY(calc(var(--edge-h) - 2px));
+  box-shadow: 0 2px 0 var(--midas-color-border-strong);
+}
+
+:root[data-kid] .kid-tile-chip {
+  height: 4rem;
+  width: 4rem;
+}
+
+:root[data-age-mode='EARLY_YEARS'] .kid-tile-chip {
+  height: 5rem;
+  width: 5rem;
+}
+
+/* ── Progress: fat, with a highlight, like a game health bar ─────────────── */
+:root[data-kid] .kid-bar-track {
+  height: 1.25rem;
+}
+
+:root[data-kid] .kid-bar-fill {
+  position: relative;
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.1);
+}
+
+:root[data-kid] .kid-bar-fill::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 4px;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Bottom tab bar: the current place is a filled, rounded tile ─────────── */
+:root[data-kid] .kid-tab {
+  font-family: var(--kid-font);
+  font-weight: 800;
+  border-radius: var(--midas-radius-lg);
+}
+
+:root[data-kid] .kid-tab-icon {
+  height: 2.5rem;
+  width: 2.5rem;
+  border-radius: var(--midas-radius-md);
+}
+
+/* ── Answer choices: big, raised, and they press in like buttons ─────────── */
+:root[data-kid] .kid-option {
+  min-height: 4rem;
+  border-radius: var(--midas-radius-lg);
+  font-family: var(--kid-font);
+  font-weight: 800;
+  box-shadow: 0 4px 0 var(--midas-color-border-strong);
+  transition: transform var(--midas-motion-duration-fast) var(--midas-motion-easing-emphasis),
+    box-shadow var(--midas-motion-duration-fast), background-color var(--midas-motion-duration-fast);
+}
+
+:root[data-kid] .kid-option:not(:disabled):active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--midas-color-border-strong);
+}
+
+:root[data-kid] .kid-option[aria-pressed='true'] {
+  box-shadow: 0 4px 0 var(--midas-color-primary);
+}
+
+/* ── Read-aloud button ───────────────────────────────────────────────────── */
+.kid-speak {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  height: 3rem;
+  width: 3rem;
+  border-radius: 9999px;
+  background: var(--midas-color-secondary);
+  color: var(--midas-color-secondary-contrast);
+  box-shadow: 0 4px 0 var(--midas-color-secondary-strong);
+  transition: transform var(--midas-motion-duration-fast) var(--midas-motion-easing-emphasis);
+}
+
+.kid-speak:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--midas-color-secondary-strong);
+}
+
+.kid-speak[aria-pressed='true'] {
+  background: var(--midas-color-accent);
+  box-shadow: 0 4px 0 var(--midas-color-accent-strong);
+}
+
+/* ── Buddy ───────────────────────────────────────────────────────────────── */
+.kid-buddy--bob {
+  animation: kid-bob 2.2s ease-in-out infinite;
+}
+
+.kid-buddy .kid-blink {
+  animation: kid-blink 4s infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+/* ── Lesson path: the zig-zag of round, raised nodes ─────────────────────── */
+.kid-node {
+  --node: var(--midas-color-primary);
+  --node-edge: var(--midas-color-primary-strong);
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 4.75rem;
+  width: 5.25rem;
+  border-radius: 9999px;
+  color: var(--midas-color-primary-contrast);
+  background: var(--node);
+  box-shadow: 0 8px 0 var(--node-edge);
+  transition: transform var(--midas-motion-duration-fast) var(--midas-motion-easing-emphasis);
+}
+
+a.kid-node:active,
+button.kid-node:not(:disabled):active {
+  transform: translateY(6px);
+  box-shadow: 0 2px 0 var(--node-edge);
+}
+
+.kid-node[data-state='done'] {
+  --node: var(--midas-color-success);
+  --node-edge: var(--midas-color-success-strong);
+  color: var(--midas-color-success-contrast);
+}
+
+.kid-node[data-state='locked'] {
+  --node: var(--midas-color-border);
+  --node-edge: var(--midas-color-border-strong);
+  color: var(--midas-color-text-muted);
+  cursor: not-allowed;
+}
+
+.kid-node[data-state='now']::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 9999px;
+  border: 5px solid var(--midas-color-primary-soft);
+  animation: kid-pulse 1.6s infinite;
+}
+
+.kid-node-tip {
+  position: absolute;
+  top: -2.9rem;
+  left: 50%;
+  translate: -50% 0;
+  white-space: nowrap;
+  padding: 0.3rem 0.9rem;
+  border: 2px solid var(--midas-color-border);
+  border-radius: var(--midas-radius-md);
+  background: var(--midas-color-surface);
+  color: var(--midas-color-primary-strong);
+  font-family: var(--kid-font);
+  font-weight: 900;
+  font-size: 0.9rem;
+  animation: kid-bob 1.4s ease-in-out infinite;
+}
+
+/* ── Confetti: pure CSS, a couple of seconds, then gone ──────────────────── */
+.kid-confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.kid-confetti > i {
+  position: absolute;
+  top: -20px;
+  width: 10px;
+  height: 16px;
+  border-radius: 3px;
+  animation: kid-fall 2.6s linear infinite;
+}
+
+@keyframes kid-fall {
+  to {
+    transform: translateY(700px) rotate(540deg);
+  }
+}
+
+@keyframes kid-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes kid-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+
+@keyframes kid-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  97% {
+    transform: scaleY(0.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kid-buddy--bob,
+  .kid-buddy .kid-blink,
+  .kid-node[data-state='now']::before,
+  .kid-node-tip,
+  .kid-confetti > i {
+    animation: none;
+  }
+
+  .kid-confetti {
+    display: none;
+  }
+}

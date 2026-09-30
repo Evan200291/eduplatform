@@ -11,7 +11,7 @@ export function Card({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        'bg-surface border border-line rounded-lg shadow-sm overflow-hidden',
+        'kid-card bg-surface border border-line rounded-lg shadow-sm overflow-hidden',
         // A card that lifts slightly under the pointer tells the user the whole
         // card is the target, not just the link inside it. Harmless on the
         // static ones; the transition is token-driven so it collapses to 0ms

@@ -33,7 +33,7 @@ export function Tile({ to, label, description, icon: Icon, accentIndex = 0, clas
     <Link
       to={to}
       className={cn(
-        'group flex min-h-touch flex-col gap-3 rounded-lg border-2 p-4 shadow-sm',
+        'kid-tile group flex min-h-touch flex-col gap-3 rounded-lg border-2 p-4 shadow-sm',
         accent.surface,
         accent.borderSoft,
         'hover:-translate-y-1 hover:shadow-md',
@@ -48,7 +48,7 @@ export function Tile({ to, label, description, icon: Icon, accentIndex = 0, clas
       <span
         aria-hidden
         className={cn(
-          'inline-flex h-12 w-12 items-center justify-center rounded-full shadow-sm',
+          'kid-tile-chip inline-flex h-12 w-12 items-center justify-center rounded-full shadow-sm',
           accent.chip,
         )}
       >

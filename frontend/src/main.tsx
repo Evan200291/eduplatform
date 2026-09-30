@@ -5,6 +5,7 @@ import { applyPreferences, usePreferences } from '@/theme';
 import { App } from './App';
 import './styles/tokens.css';
 import './styles/global.css';
+import './styles/kids.css';
 
 /**
  * Application entry.

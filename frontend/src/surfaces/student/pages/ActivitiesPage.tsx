@@ -20,6 +20,7 @@ import {
   text,
 } from '@/components/ui';
 import { QueryBoundary, ErrorState } from '@/components/feedback';
+import { LessonPath, type LessonPathNode } from '@/components/kids';
 import { cn } from '@/lib/cn';
 import { formatAboutMinutes } from '@/lib/format';
 import { fetchEnrolledClasses } from '@/academic/academic.api';
@@ -28,6 +29,7 @@ import { completePathItem, fetchActivePath } from '@/learning/learning.api';
 import { useStartPathItem } from '@/learning/use-start-path-item';
 import type { PathItem } from '@/learning/learning.types';
 import { qk } from '@/query/keys';
+import { isYoungLearner, useAgeMode } from '@/theme';
 import { useDocumentTitle } from '@/hooks/use-document-title';
 import { paths } from '@/routes/paths';
 import { playAccent, stateChip } from '../play-accents';
@@ -72,6 +74,7 @@ const STATUS_LABEL = {
 export function ActivitiesPage() {
   useDocumentTitle('Learn');
   const queryClient = useQueryClient();
+  const young = isYoungLearner(useAgeMode());
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const [openLesson, setOpenLesson] = useState<{ item: PathItem } | null>(null);
 
@@ -164,11 +167,15 @@ export function ActivitiesPage() {
                   </Card>
                 ) : null}
 
-                <ol className="flex flex-col gap-3">
-                  {pathQuery.data.items
-                    .slice()
-                    .sort((a, b) => a.sortOrder - b.sortOrder)
-                    .map((item, index) => (
+                {young ? (
+                  <LessonPath
+                    nodes={orderedItems(pathQuery.data.items).map((item, _index, all) =>
+                      pathNode(item, pathQuery.data!.id, nextStepId(all) === item.id, () => setOpenLesson({ item })),
+                    )}
+                  />
+                ) : (
+                  <ol className="flex flex-col gap-3">
+                    {orderedItems(pathQuery.data.items).map((item, index) => (
                       <li key={item.id}>
                         <PathStepRow
                           item={item}
@@ -179,7 +186,8 @@ export function ActivitiesPage() {
                         />
                       </li>
                     ))}
-                </ol>
+                  </ol>
+                )}
               </div>
             ) : null}
           </QueryBoundary>
@@ -201,6 +209,57 @@ export function ActivitiesPage() {
   );
 }
 
+function orderedItems(items: PathItem[]): PathItem[] {
+  return items.slice().sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+function stepTitle(item: PathItem): string {
+  return item.assessment?.title ?? item.activity?.title ?? item.lesson?.title ?? item.topic?.name ?? 'Step';
+}
+
+/**
+ * Where a step goes. A step with `assessmentId` is graded through the assessment
+ * engine (see `ActivityPlayerPage`'s `kind=assessment` branch). A step with only
+ * `activityId` — EXPLANATION, WORKED_EXAMPLE, MINI_GAME, TEACHER_TASK,
+ * PRACTICE_SEQUENCE and any other activity never wrapped in an assessment — has
+ * no attempt to start, so it opens the same page in its `kind=activity` branch
+ * instead, which reads the activity directly. Lessons open inline (no href).
+ */
+function stepHref(item: PathItem, pathId: string): string | null {
+  if (item.assessmentId) {
+    return `${paths.learn.activity(item.assessmentId)}?kind=assessment&pathId=${encodeURIComponent(pathId)}&itemId=${encodeURIComponent(item.id)}`;
+  }
+  if (item.activityId) {
+    return `${paths.learn.activity(item.activityId)}?kind=activity&pathId=${encodeURIComponent(pathId)}&itemId=${encodeURIComponent(item.id)}`;
+  }
+  return null;
+}
+
+/** The one step the learner should do next: the first that is open to them. */
+function nextStepId(items: PathItem[]): string | undefined {
+  return items.find((item) => item.status === 'AVAILABLE' || item.status === 'IN_PROGRESS')?.id;
+}
+
+/** The same step as a node on the young learner's winding path. */
+function pathNode(item: PathItem, pathId: string, isNext: boolean, onOpenLesson: () => void): LessonPathNode {
+  const isLocked = item.status === 'LOCKED' || item.status === 'REMOVED_BY_TEACHER';
+  const isDone = item.status === 'COMPLETED';
+  const BaseIcon = item.assessment ? IconAssessment : item.lesson ? IconLesson : IconActivity;
+  const Icon = isLocked ? IconLock : isDone ? IconCheck : BaseIcon;
+  const href = stepHref(item, pathId);
+  const hasContent = Boolean(item.assessmentId || item.activityId || item.lessonId);
+
+  return {
+    id: item.id,
+    label: stepTitle(item),
+    state: isDone ? 'done' : isLocked ? 'locked' : isNext ? 'now' : 'open',
+    icon: <Icon />,
+    href: href ?? undefined,
+    onOpen: !href && hasContent ? onOpenLesson : undefined,
+    reason: isLocked ? item.reason : hasContent ? null : 'More on this soon.',
+  };
+}
+
 function PathStepRow({
   item,
   stepNumber,
@@ -214,7 +273,7 @@ function PathStepRow({
   pathId: string;
   onOpenLesson: () => void;
 }) {
-  const title = item.assessment?.title ?? item.activity?.title ?? item.lesson?.title ?? item.topic?.name ?? 'Step';
+  const title = stepTitle(item);
   const icon = item.assessment ? IconAssessment : item.lesson ? IconLesson : IconActivity;
   const Icon = item.status === 'LOCKED' ? IconLock : item.status === 'COMPLETED' ? IconCheck : icon;
   const isLocked = item.status === 'LOCKED';
@@ -235,17 +294,7 @@ function PathStepRow({
   const edge = isLocked ? 'border-l-line-strong' : isDone ? 'border-l-success' : accent.borderLeft;
   const chip = isLocked ? stateChip.locked : isDone ? stateChip.success : accent.chip;
 
-  // A step with `assessmentId` is graded through the assessment engine (see
-  // `ActivityPlayerPage`'s `kind=assessment` branch). A step with only
-  // `activityId` — EXPLANATION, WORKED_EXAMPLE, MINI_GAME, TEACHER_TASK,
-  // PRACTICE_SEQUENCE and any other activity never wrapped in an assessment —
-  // has no attempt to start, so it opens the same page in its `kind=activity`
-  // branch instead, which reads the activity directly.
-  const href = item.assessmentId
-    ? `${paths.learn.activity(item.assessmentId)}?kind=assessment&pathId=${encodeURIComponent(pathId)}&itemId=${encodeURIComponent(item.id)}`
-    : item.activityId
-      ? `${paths.learn.activity(item.activityId)}?kind=activity&pathId=${encodeURIComponent(pathId)}&itemId=${encodeURIComponent(item.id)}`
-      : null;
+  const href = stepHref(item, pathId);
 
   return (
     <Card

@@ -9,7 +9,7 @@ import type { NavSection } from './nav.types';
 
 const tab = {
   base: cn(
-    'group relative flex flex-1 flex-col items-center justify-center gap-1 px-2 py-2 min-h-touch text-xs font-medium',
+    'kid-tab group relative flex flex-1 flex-col items-center justify-center gap-1 px-2 py-2 min-h-touch text-xs font-medium',
     'sm:flex-none sm:flex-row sm:gap-2 sm:rounded-pill sm:px-4 sm:text-sm',
     focusRing,
     transition,
@@ -29,7 +29,7 @@ const tab = {
  */
 const iconTile = {
   base: cn(
-    'grid place-items-center rounded-lg h-9 w-9 sm:h-7 sm:w-7',
+    'kid-tab-icon grid place-items-center rounded-lg h-9 w-9 sm:h-7 sm:w-7',
     'transition-[background-color,color,transform] duration-base ease-standard',
   ),
   idle: 'bg-transparent text-ink-muted group-hover:text-ink',

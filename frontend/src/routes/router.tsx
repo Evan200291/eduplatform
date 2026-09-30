@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 import { ACCOUNT_ROUTES } from '@/surfaces/account/account.routes';
 import { ADMIN_ROUTES } from '@/surfaces/admin/admin.routes';
@@ -49,6 +50,23 @@ export const ROUTES: RouteObject[] = [
   { path: paths.forbidden, element: <ForbiddenPage /> },
   { path: '*', element: <NotFoundPage /> },
 ];
+
+/**
+ * The kid-design style guide, mounted only by the dev server. `import.meta.env.DEV`
+ * is a build-time constant, so a production bundle contains neither the route nor
+ * the page. It sits outside `RequireAuth` because it fetches nothing.
+ */
+if (import.meta.env.DEV) {
+  const KidsGallery = lazy(() => import('@/dev/KidsGallery').then((m) => ({ default: m.KidsGallery })));
+  ROUTES.unshift({
+    path: '/dev/kids',
+    element: (
+      <Suspense fallback={null}>
+        <KidsGallery />
+      </Suspense>
+    ),
+  });
+}
 
 export function createRouter() {
   return createBrowserRouter(ROUTES);
