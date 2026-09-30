@@ -52,6 +52,10 @@ trap on_error ERR
 
 [ "$(id -u)" -eq 0 ] || die "Run as root (sudo)."
 
+# Builds are CPU-heavy; run at low priority so the other apps here keep their share.
+renice -n 15 -p $$ >/dev/null 2>&1 || true
+ionice -c3 -p $$ >/dev/null 2>&1 || true
+
 printf '\n\033[1mMidas Learning Cloud - add site to shared VPS\033[0m\n'
 printf 'Domain: %s\nDir:    %s\nBranch: %s\n' "$DOMAIN" "$APP_DIR" "$BRANCH"
 
@@ -72,11 +76,29 @@ ok "node $(node -v), npm $(npm -v), pm2 $(pm2 -v)"
 mysql -e "SELECT 1;" >/dev/null 2>&1 || die "Cannot open a MySQL admin shell as root (mysql -e 'SELECT 1' failed). Create the database by hand or fix root access."
 ok "MySQL admin access works"
 
+# The TypeScript build needs ~2-3GB. On a shared box the kernel's OOM killer
+# picks the biggest process, which is probably somebody else's app, not ours.
+# So refuse to build unless memory (free + swap) is clearly enough.
 AVAIL_MB="$(free -m | awk '/^Mem:/{print $7}')"
-SWAP_MB="$(free -m | awk '/^Swap:/{print $2}')"
-if [ "${AVAIL_MB:-0}" -lt 1500 ] && [ "${SWAP_MB:-0}" -lt 1024 ]; then
-  note "Only ${AVAIL_MB}MB memory available and ${SWAP_MB}MB swap. The TypeScript build needs ~2GB; if it gets 'Killed', add swap (fallocate -l 4G /swapfile) and re-run."
+SWAP_FREE_MB="$(free -m | awk '/^Swap:/{print $4}')"
+HEADROOM_MB=$(( ${AVAIL_MB:-0} + ${SWAP_FREE_MB:-0} ))
+if [ "$HEADROOM_MB" -lt 3000 ] && [ "${FORCE_LOW_MEMORY:-0}" != "1" ]; then
+  die "Only ${HEADROOM_MB}MB of memory+swap headroom; the build needs ~3GB and running out would let the kernel kill OTHER apps on this server. Add swap first (fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile) or build elsewhere. Override with FORCE_LOW_MEMORY=1 at your own risk."
 fi
+ok "memory headroom ${HEADROOM_MB}MB"
+
+DISK_FREE_MB="$(df -Pm "$(dirname "$APP_DIR")" | awk 'NR==2{print $4}')"
+[ "${DISK_FREE_MB:-0}" -ge 3000 ] || die "Only ${DISK_FREE_MB}MB disk free where ${APP_DIR} will live; need ~3GB for install + build."
+
+# Never adopt or modify a database/user this script did not create. Ownership
+# is proven by the password file only this script writes.
+DB_PW_FILE="/root/.midas-db-pw"
+DB_EXISTS="$(mysql -N -e "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='${DB_NAME}';")"
+USER_EXISTS="$(mysql -N -e "SELECT COUNT(*) FROM mysql.user WHERE user='${DB_USER}';")"
+if [ ! -f "$DB_PW_FILE" ] && { [ "$DB_EXISTS" -gt 0 ] || [ "$USER_EXISTS" -gt 0 ]; }; then
+  die "MySQL already has a database named '${DB_NAME}' (count=${DB_EXISTS}) or a user named '${DB_USER}' (count=${USER_EXISTS}) that this script did not create. Altering it could break another app. Re-run with different names, e.g. DB_NAME=midas_edu DB_USER=midas_edu."
+fi
+ok "database/user names are unclaimed (or already ours)"
 
 if pm2 describe midas-api >/dev/null 2>&1; then
   note "A PM2 process named midas-api already exists — it will be reloaded, not duplicated."
@@ -92,6 +114,18 @@ else
   PORT=4000
   while ss -tln | awk '{print $4}' | grep -qE "[:.]${PORT}\$"; do PORT=$((PORT + 1)); done
   ok "port $PORT is free"
+fi
+
+if [ "${DRY_RUN:-0}" = "1" ]; then
+  printf '\n\033[1;32mDRY RUN - every check above passed and NOTHING was changed.\033[0m\n'
+  printf 'A real run would:\n'
+  printf '  clone/update  %s (branch %s)\n' "$APP_DIR" "$BRANCH"
+  printf '  create MySQL  database %s + user %s (granted on that database only)\n' "$DB_NAME" "$DB_USER"
+  printf '  start PM2     one new process, midas-api, on 127.0.0.1:%s\n' "$PORT"
+  printf '  add nginx     /etc/nginx/sites-available/%s (validated, rolled back on failure)\n' "$DOMAIN"
+  printf '  not touch     other PM2 apps, other databases, firewall, default nginx site, Node\n\n'
+  trap - ERR
+  exit 0
 fi
 
 # ---------------------------------------------------------------------------
@@ -110,7 +144,6 @@ ok "at $(git rev-parse --short HEAD) on $BRANCH"
 # ---------------------------------------------------------------------------
 step "Database"
 
-DB_PW_FILE="/root/.midas-db-pw"
 if [ ! -f "$DB_PW_FILE" ]; then
   openssl rand -hex 24 >"$DB_PW_FILE"
   chmod 600 "$DB_PW_FILE"
@@ -229,6 +262,12 @@ done
 if [ "$HEALTHY" -ne 1 ]; then
   pm2 logs midas-api --lines 40 --nostream || true
   die "API is not answering on 127.0.0.1:${PORT}."
+fi
+# `pm2 save` rewrites the list PM2 restores after a reboot with whatever is
+# running right now. Keep the previous list so it can be put back.
+if [ -f /root/.pm2/dump.pm2 ]; then
+  cp -p /root/.pm2/dump.pm2 "/root/.pm2/dump.pm2.before-midas.$(date +%Y%m%d-%H%M%S)"
+  note "previous PM2 boot list backed up next to dump.pm2 (dump.pm2.before-midas.*)"
 fi
 pm2 save >/dev/null
 ok "midas-api online on 127.0.0.1:${PORT}"
