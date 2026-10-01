@@ -69,6 +69,23 @@ command -v nginx >/dev/null 2>&1 || die "nginx is not installed."
 command -v git   >/dev/null 2>&1 || die "git is not installed."
 command -v mysql >/dev/null 2>&1 || die "mysql client is not installed."
 
+# nginx serves frontend/dist as its own (non-root) user. If APP_DIR sits under a
+# folder that user cannot enter (e.g. a locked-down /root), the site would be a
+# 403 after everything else succeeded — so find out now, in the dry run too.
+NGINX_USER="$(ps -o user= -C nginx 2>/dev/null | grep -v '^root$' | head -1 | tr -d ' ')"
+NGINX_USER="${NGINX_USER:-www-data}"
+PROBE="$APP_DIR"
+while [ ! -d "$PROBE" ]; do PROBE="$(dirname "$PROBE")"; done
+WALK="$PROBE"
+while :; do
+  if ! runuser -u "$NGINX_USER" -- test -x "$WALK" 2>/dev/null; then
+    die "nginx runs as '${NGINX_USER}' and cannot enter ${WALK}, which is on the path to ${APP_DIR}. The site would 403. Use a path nginx can reach (default APP_DIR=/var/www/midas), or deliberately allow traversal of that folder yourself (chmod o+x ${WALK}) — this script will not change permissions on folders it does not own."
+  fi
+  [ "$WALK" = "/" ] && break
+  WALK="$(dirname "$WALK")"
+done
+ok "nginx user '${NGINX_USER}' can reach ${APP_DIR}"
+
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
 [ "$NODE_MAJOR" -ge 20 ] || die "Node 20+ required but this server has $(node -v). Upgrading Node could break the other apps here — do that deliberately, not from this script."
 ok "node $(node -v), npm $(npm -v), pm2 $(pm2 -v)"
