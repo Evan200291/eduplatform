@@ -237,6 +237,15 @@ Port 4000 stays closed — nginx reaches the API over localhost.
 
 ---
 
+## Design prototype
+
+The clickable kid-design prototype is copied into the build, so it is served at
+`https://your-domain/prototype/` with no extra nginx config (and at
+`http://localhost:5173/prototype/` under `npm run dev`). It needs no login and touches no data.
+See `docs/design/KIDS-DESIGN.md`. PM2 walkthrough: `docs/PM2-GUIDE.md`.
+
+---
+
 ## Updating after a `git push`
 
 ```bash

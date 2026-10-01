@@ -8,7 +8,7 @@ a friendly mascot, read-aloud, and encouragement instead of red "wrong" screens.
 
 | What | Where |
 |---|---|
-| Clickable prototype of **every page** (55 entries, 148 states, with state / age / device toggles) | `docs/design/kids/index.html` — `python -m http.server 5180 --directory docs/design/kids`, then open http://localhost:5180 |
+| Clickable prototype of **every page** (55 entries, 148 states, with state / age / device toggles) | **`/prototype/`** on the running site — http://localhost:5173/prototype/ in dev, `https://<your-domain>/prototype/` once deployed (the build copies it). Or open `docs/design/kids/index.html` directly. |
 | Living style guide made of the **real components** (dev only, no sign-in) | `npm run dev` in `frontend/`, then http://localhost:5173/dev/kids |
 
 The prototype covers learner, teacher, admin, sign-in and system pages. Learner pages use the full

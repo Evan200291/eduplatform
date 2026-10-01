@@ -346,6 +346,8 @@ if [ "$SEED_DEMO_DATA" = "true" ]; then
   printf 'Demo staff password (public in the repo): Riverbank!2026   e.g. nadia.okafor@riverbank.example\n'
   printf 'Demo pupils: code RVB-0001 upward, PIN 2468\n\n'
 fi
+printf 'Prototype https://%s/prototype/   (clickable design for every page; no login)
+' "$DOMAIN"
 printf 'Update    cd %s && ./scripts/deploy.sh   (DEPLOY_BRANCH=%s if not main)\n' "$APP_DIR" "$BRANCH"
 printf 'Logs      pm2 logs midas-api\n'
 printf 'NOT done  firewall / default nginx site / Node — left as they were.\n\n'
