@@ -124,13 +124,39 @@ fi
 # ---------------------------------------------------------------------------
 step "Pick a free localhost port"
 
+# "Listening right now" is not enough on a shared box: an app that is stopped or
+# crash-looping holds no socket but will want its port back, and nginx may proxy
+# to a port nothing listens on yet. Reserve those too.
+RESERVED_PORTS="$(
+  {
+    grep -rhoE '(proxy_pass|server)[[:space:]]+(https?://)?[^;[:space:]]*:[0-9]+' /etc/nginx/ 2>/dev/null | grep -oE '[0-9]+$' || true
+    pm2 jlist 2>/dev/null | node -e '
+      let t=""; process.stdin.on("data",d=>t+=d).on("end",()=>{
+        try {
+          const apps=JSON.parse(t.slice(t.indexOf("[")));
+          for (const a of apps) { const e=a.pm2_env||{}; const v=e.PORT||(e.env&&e.env.PORT); if (v&&/^[0-9]+$/.test(String(v))) console.log(v); }
+        } catch {}
+      })' || true
+  } | sort -un | tr '\n' ' '
+)"
+port_taken() {
+  ss -tln | awk '{print $4}' | grep -qE "[:.]$1\$" && return 0
+  case " $RESERVED_PORTS " in *" $1 "*) return 0 ;; esac
+  return 1
+}
+note "ports in use or claimed by other apps/nginx: $(ss -tln | awk 'NR>1{n=split($4,a,":"); print a[n]}' | sort -un | tr '\n' ' ')${RESERVED_PORTS}"
+
 if [ -f "$APP_DIR/backend/.env" ] && grep -qE '^PORT=[0-9]+' "$APP_DIR/backend/.env"; then
   PORT="$(grep -E '^PORT=' "$APP_DIR/backend/.env" | head -1 | tr -dc '0-9')"
   ok "reusing PORT=$PORT from existing .env"
+elif [ -n "${MIDAS_PORT:-}" ]; then
+  port_taken "$MIDAS_PORT" && die "MIDAS_PORT=${MIDAS_PORT} is already in use or claimed by another app/nginx site. Pick another."
+  PORT="$MIDAS_PORT"
+  ok "port $PORT (chosen with MIDAS_PORT) is free"
 else
   PORT=4000
-  while ss -tln | awk '{print $4}' | grep -qE "[:.]${PORT}\$"; do PORT=$((PORT + 1)); done
-  ok "port $PORT is free"
+  while port_taken "$PORT"; do PORT=$((PORT + 1)); done
+  ok "port $PORT is free and unclaimed"
 fi
 
 if [ "${DRY_RUN:-0}" = "1" ]; then
